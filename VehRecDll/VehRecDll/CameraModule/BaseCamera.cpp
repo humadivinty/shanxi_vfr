@@ -594,7 +594,7 @@ void BaseCamera::ReadConfig()
 #endif
 
     //读取可靠性配置文件
-    int iLog = GetPrivateProfileIntA("Log", "Enable", 1, iniFileName);
+    int iLog = GetPrivateProfileIntA("Log", "Enable", 0, iniFileName);
     m_bLogEnable = (iLog == 1) ? true : false;
 
     char chTemp[256] = { 0 };

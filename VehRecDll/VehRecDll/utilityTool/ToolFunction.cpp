@@ -1523,6 +1523,13 @@ void Tool_WriteLog(const char* chlog)
 
 void Tool_WriteLog_Ex(const char* chlog)
 {
+	int iLogEnable = 0;
+	Tool_ReadIntValueFromConfigFile(INI_FILE_NAME, "Log", "Enable", iLogEnable);
+	if (iLogEnable == 0)
+	{
+		return;
+	}
+
     //取得当前的精确毫秒的时间
     SYSTEMTIME systime;
     GetLocalTime(&systime);//本地时间

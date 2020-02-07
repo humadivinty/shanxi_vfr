@@ -426,6 +426,100 @@ void ResultListManager::DeleteToPosition(int position)
     }
 }
 
+void ResultListManager::DeleteByCarID(DWORD dwCarID)
+{
+    try
+    {
+        std::unique_lock<std::mutex> locker(m_mtx);
+        //MYLocker locker(&m_hcs);
+        Result_Type value;
+        if (m_list.empty())
+        {
+            return ;
+        }
+
+        for (list_Type::iterator it = m_list.begin(); it != m_list.end(); it++)
+        {
+            Result_Type TempValue = *it;
+            if (TempValue->dwCarID == dwCarID)
+            {
+                m_list.erase(it);
+                break;
+            }
+        }
+    }
+    catch (std::bad_exception& e)
+    {
+        LOGFMTE(" bad_exception, error msg = %s", e.what());
+    }
+    catch (std::bad_alloc& e)
+    {
+        LOGFMTE("bad_alloc, error msg = %s", e.what());
+    }
+    catch (std::exception& e)
+    {
+        LOGFMTE("exception, error msg = %s.", e.what());
+    }
+    catch (void*)
+    {
+        LOGFMTE("dwCarID = %lu,   void* exception", dwCarID);
+    }
+    catch (...)
+    {
+        LOGFMTE("  unknown exception", dwCarID);
+    }
+}
+
+bool ResultListManager::ReplaceByCarID(DWORD dwCarID, Result_Type result)
+{
+    bool bet = false;
+    try
+    {
+        std::unique_lock<std::mutex> locker(m_mtx);
+        if (m_list.empty())
+        {
+            return bet;
+        }
+
+        for (list_Type::iterator it = m_list.begin(); it != m_list.end(); it++)
+        {
+            Result_Type TempValue = *it;
+            if (TempValue->dwCarID == dwCarID)
+            {
+                *it = result;
+                bet = true;
+                break;
+            }
+        }
+        return bet;
+    }
+    catch (std::bad_exception& e)
+    {
+        LOGFMTE(" bad_exception, error msg = %s", e.what());
+        return bet;
+    }
+    catch (std::bad_alloc& e)
+    {
+        LOGFMTE(" bad_alloc, error msg = %s", e.what());
+        return bet;
+    }
+    catch (std::exception& e)
+    {
+        LOGFMTE(" exception, error msg = %s.", e.what());
+        return bet;
+    }
+    catch (void*)
+    {
+        LOGFMTE("dwCarID = %lu,   void* exception", dwCarID);
+        return bet;
+    }
+    catch (...)
+    {
+        LOGFMTE("dwCarID = %lu,   unknown exception", dwCarID);
+        return bet;
+    }
+}
+
 std::string ResultListManager::GetAllPlateString()
 {
     try
@@ -439,11 +533,15 @@ std::string ResultListManager::GetAllPlateString()
         }
         else
         {
+            char chValue[256] = {0};
             for (list_Type::const_iterator it = m_list.cbegin(); it != m_list.cend(); it++)
             {
                 Result_Type value = *it;
                 strPlateListString.append(value->chPlateNO);
-                strPlateListString.append("\n");
+
+                memset(chValue, '\0', sizeof(chValue));
+                sprintf(chValue, "  CarID: %lu \n", value->dwCarID);
+                strPlateListString.append(chValue);
             }
             return strPlateListString;
         }

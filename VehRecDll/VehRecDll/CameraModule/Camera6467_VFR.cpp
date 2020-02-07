@@ -1241,33 +1241,33 @@ int Camera6467_VFR::RecordInfoEnd(DWORD dwCarID)
                     WriteFormatLog("list is empty.");
                 }
                 std::shared_ptr<CameraResult> pResult(m_pResult);
-                if (m_dwLastCarID == dwCarID)
-                {
-                    WriteFormatLog("current car ID  %lu is  same wit last carID %lu, replace the last one.", dwCarID, m_dwLastCarID);
 
-                    std::shared_ptr<CameraResult> lastResult;
-                    m_VfrResultList.back(lastResult);
-
-                    if (lastResult
-                        &&strlen(lastResult->chSaveFileName) > 0
-                        && lastResult->dwCarID == dwCarID)
-                    {
-                        WriteFormatLog("last car ID  %lu , avi fileName = %s.", lastResult->dwCarID, lastResult->chSaveFileName);
-                        strcpy_s(pResult->chSaveFileName, lastResult->chSaveFileName);
-                        m_VfrResultList.pop_back();
-                    }                    
-                }
-                else
-                {
-                    m_dwLastCarID = dwCarID;
-                    //m_MySemaphore.notify(GetCurrentThreadId());
-                }
-				if (m_VfrResultList.size() >= 10)
+				std::shared_ptr<CameraResult> pLastSameResult = m_VfrResultList.GetOneByCarid(dwCarID);
+				if (pLastSameResult)
 				{
-					WriteFormatLog("m_VfrResultList size larger than 10 , remvoe first one.");
-					m_VfrResultList.pop_front();
+					WriteFormatLog("current car ID  %lu is already receive, replace it.", dwCarID, m_dwLastCarID);
+
+					if (pLastSameResult
+						&&strlen(pLastSameResult->chSaveFileName) > 0
+						&& pLastSameResult->dwCarID == dwCarID)
+					{
+						WriteFormatLog("last car ID  %lu , avi fileName = %s.", pLastSameResult->dwCarID, pLastSameResult->chSaveFileName);
+						strcpy_s(pResult->chSaveFileName, pLastSameResult->chSaveFileName);
+					}
+					m_VfrResultList.ReplaceByCarID(dwCarID, pResult);
 				}
-                m_VfrResultList.push_back(pResult);
+				else
+				{
+					m_dwLastCarID = dwCarID;
+					//m_MySemaphore.notify(GetCurrentThreadId());
+					if (m_VfrResultList.size() >= 10)
+					{
+						WriteFormatLog("m_VfrResultList size larger than 10 , remvoe first one.");
+						m_VfrResultList.pop_front();
+					}
+					m_VfrResultList.push_back(pResult);
+				}
+                
                 WriteFormatLog("after push, list plate NO:\n");
                 BaseCamera::WriteLog(m_VfrResultList.GetAllPlateString().c_str());                
 

@@ -320,10 +320,16 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
                 break;
             }
             if (pTempResult
-                && dwLastCarID == pTempResult->dwCarID)
+                && FuncfindIfSendBefore(g_SentCarList, pTempResult->dwCarID))
             {
-                pCamera->DeleteFrontResult(NULL);
-                WRITE_LOG("result , plate number = %s, carID = %lu but it is same with last result , search again.", pTempResult->chPlateNO, pTempResult->dwCarID);
+				WRITE_LOG("get result , plate number = %s, carID = %lu but it is sent before, search again.",
+					pTempResult->chPlateNO,
+					pTempResult->dwCarID);
+				if (RESULT_MODE_FRONT == pCamera->GetResultMode())
+				{
+					WRITE_LOG("result mode == RESULT_MODE_FRONT,DeleteFrontResult. ");
+					pCamera->DeleteFrontResult(NULL);
+				}  
             }
             Sleep(50);
         } while (iCurrentTic < (iFirstTic + iDelayTime));
@@ -338,7 +344,11 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
             else
             {
                 WRITE_LOG("current reesult, plate number = %s, carID = %lu is same with last one, through it, return -1.", pTempResult->chPlateNO, pTempResult->dwCarID);
-				pCamera->DeleteFrontResult(NULL);
+				if (RESULT_MODE_FRONT == pCamera->GetResultMode())
+				{
+					WRITE_LOG("result mode == RESULT_MODE_FRONT,DeleteFrontResult. ");
+					pCamera->DeleteFrontResult(NULL);
+				}
                 return -1;
             }			
 

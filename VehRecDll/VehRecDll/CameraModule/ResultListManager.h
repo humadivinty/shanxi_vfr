@@ -53,6 +53,8 @@ public:
 
     int GetPositionByPlateNo(const char* plateNo);
     void DeleteToPosition(int position);
+    void DeleteByCarID(DWORD dwCarID);
+    bool ReplaceByCarID(DWORD dwCarID, Result_Type result);
 
     std::string GetAllPlateString();
     
