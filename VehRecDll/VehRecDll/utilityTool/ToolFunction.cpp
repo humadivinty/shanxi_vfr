@@ -1612,7 +1612,7 @@ void Tool_WriteLog_Ex(const char* chlog)
 
 void Tool_WriteFormatLog(const char* szfmt, ...)
 {
-    static char g_szPbString[10240] = { 0 };
+    char g_szPbString[1024] = { 0 };
     memset(g_szPbString, '\0', sizeof(g_szPbString));
 
     va_list arg_ptr;

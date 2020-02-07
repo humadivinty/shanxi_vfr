@@ -40,6 +40,7 @@ m_iIndex(0),
 m_iVideoDelayTime(2),
 m_iLogHoldDay(30),
 m_bLogEnable(true),
+m_bVideoLogEnable(false),
 m_bSynTime(true),
   m_bFirstH264Frame(true),
 m_strIP("")
@@ -52,7 +53,7 @@ m_strIP("")
 
     memset(m_chLogPath, '\0', sizeof(m_chLogPath));
     ReadConfig();
-    m_h264Saver.SetLogEnable(m_bLogEnable);
+    m_h264Saver.SetLogEnable(m_bVideoLogEnable);
 }
 
 BaseCamera::BaseCamera(const char* chIP, HWND  hWnd, int Msg) :
@@ -69,6 +70,7 @@ m_iIndex(0),
 m_iVideoDelayTime(2),
 m_iLogHoldDay(30),
 m_bLogEnable(true),
+m_bVideoLogEnable(false),
 m_bSynTime(true),
   m_bFirstH264Frame(true),
 m_strIP(chIP)
@@ -81,7 +83,7 @@ m_strIP(chIP)
     memset(m_chLogPath, '\0', sizeof(m_chLogPath));
 
     ReadConfig();
-    m_h264Saver.SetLogEnable(m_bLogEnable);
+    m_h264Saver.SetLogEnable(m_bVideoLogEnable);
 }
 
 BaseCamera::~BaseCamera()
@@ -615,6 +617,9 @@ void BaseCamera::ReadConfig()
     iTemp = 2;
     Tool_ReadIntValueFromConfigFile(INI_FILE_NAME, "Video", "DelayTime", iTemp);
     m_iVideoDelayTime = iTemp;
+	iTemp = 0;
+	Tool_ReadIntValueFromConfigFile(INI_FILE_NAME, "Video", "LogEnable", iTemp);
+	m_bVideoLogEnable = iTemp == 0 ? false : true;
 }
 
 void BaseCamera::SetLogPath(const char* path)
@@ -1987,6 +1992,22 @@ int BaseCamera::GetResultHoldDay()
     iResult = m_iResultHoldDay;
     LeaveCriticalSection(&m_csFuncCallback);
     return iResult;
+}
+
+void BaseCamera::SetConnectMode(int mode)
+{
+	EnterCriticalSection(&m_csFuncCallback);
+	m_iConnectMode = mode;
+	LeaveCriticalSection(&m_csFuncCallback);
+}
+
+int BaseCamera::GetConnectMode()
+{
+	int iValue = 0;
+	EnterCriticalSection(&m_csFuncCallback);
+	iValue = m_iConnectMode;
+	LeaveCriticalSection(&m_csFuncCallback);
+	return iValue;
 }
 
 void BaseCamera::setVideoAdvanceTime(int iTime)

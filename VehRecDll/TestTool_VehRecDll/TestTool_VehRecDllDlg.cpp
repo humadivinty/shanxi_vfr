@@ -84,6 +84,8 @@ BEGIN_MESSAGE_MAP(CTestTool_VehRecDllDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BUTTON_VehRec_Free, &CTestTool_VehRecDllDlg::OnBnClickedButtonVehrecFree)
     ON_BN_CLICKED(IDC_BUTTON_connectEx, &CTestTool_VehRecDllDlg::OnBnClickedButtonconnectex)
     ON_BN_CLICKED(IDC_BUTTON_GetCarData, &CTestTool_VehRecDllDlg::OnBnClickedButtonGetcardata)
+	ON_WM_TIMER()
+	ON_BN_CLICKED(IDC_BUTTON_BeginTimer, &CTestTool_VehRecDllDlg::OnBnClickedButtonBegintimer)
 END_MESSAGE_MAP()
 
 
@@ -139,6 +141,7 @@ BOOL CTestTool_VehRecDllDlg::OnInitDialog()
 
     g_pDlg = this;
     m_iCameraHandle = -1;
+	GetDlgItem(IDC_BUTTON_BeginTimer)->SetWindowTextA("开启定时取结果");
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -448,7 +451,7 @@ void CTestTool_VehRecDllDlg::OnBnClickedButtonGetcardata()
 
     sprintf_s(chSideImagePath, sizeof(chSideImagePath), "%s\\side.jpg", szPath);
     sprintf_s(chTailImagePath, sizeof(chTailImagePath), "%s\\tail.jpg", szPath);
-    sprintf_s(chVideoPath, sizeof(chTailImagePath), "%s\\car.mp4", szPath);
+    sprintf_s(chVideoPath, sizeof(chVideoPath), "%s\\car.mp4", szPath);
 
 
     int iRet = VehRec_GetCarData(m_iCameraHandle, chSideImagePath, chTailImagePath, chVideoPath);
@@ -461,4 +464,38 @@ void CTestTool_VehRecDllDlg::OnBnClickedButtonGetcardata()
         chTailImagePath, 
         chVideoPath);
     ShowMessage(chLog);
+}
+
+
+void CTestTool_VehRecDllDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+	switch (nIDEvent)
+	{
+	case 1:
+		OnBnClickedButtonGetcardata();
+		break;
+	default:
+		break;
+	}
+
+	CDialogEx::OnTimer(nIDEvent);
+}
+
+
+void CTestTool_VehRecDllDlg::OnBnClickedButtonBegintimer()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	CString strText;
+	GetDlgItem(IDC_BUTTON_BeginTimer)->GetWindowText(strText);
+	if (-1 != strText.Find("开启"))
+	{
+		SetTimer(1, 5000, NULL);
+		GetDlgItem(IDC_BUTTON_BeginTimer)->SetWindowTextA("关闭定时取结果");
+	}
+	else
+	{
+		KillTimer(1);
+		GetDlgItem(IDC_BUTTON_BeginTimer)->SetWindowTextA("开启定时取结果");
+	}	
 }

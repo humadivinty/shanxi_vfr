@@ -112,6 +112,8 @@ typedef struct _BasicInfo
     char szUBLVersion[128];//UBL版本，仅适用于PCC200、PCC600
 }BasicInfo;
 
+enum connectMode { mode_noCallback,mode_callback};
+
 class BaseCamera
 {
 public:
@@ -197,6 +199,9 @@ public:
     void SetReulstHoldDay(int days);
     int GetResultHoldDay();
 
+	void SetConnectMode(int mode);
+	int GetConnectMode();
+
 public :
     void setVideoAdvanceTime(int iTime);
     int getVideoAdvanceTime();
@@ -227,8 +232,11 @@ protected:
     int m_iLogHoldDay;
     int m_iResultHoldDay;
 
+	int m_iConnectMode;
+
 	DWORD64 m_curH264Ms;
     bool m_bLogEnable;
+	bool m_bVideoLogEnable;
     bool m_bSynTime;
     bool m_bFirstH264Frame;
 

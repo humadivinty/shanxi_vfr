@@ -217,6 +217,6 @@ private:
     std::list<std::string> m_lsVideoName;
 
     std::shared_ptr<CameraResult> m_pLastResult;
-    CCusSemaphore m_MySemaphore;
+    //CCusSemaphore m_MySemaphore;
 };
 

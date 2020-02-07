@@ -15,17 +15,11 @@ CameraIMG& CameraIMG::operator=( const CameraIMG& CaIMG )
 		wImgHeight = CaIMG.wImgHeight;
 		dwImgSize = CaIMG.dwImgSize;
 		wImgType = CaIMG.wImgType;
-		for (unsigned int i = 0; i< sizeof(chSavePath); i++)
-		{
-			chSavePath[i] = CaIMG.chSavePath[i];
-		}
+		memcpy(chSavePath, CaIMG.chSavePath, sizeof(chSavePath));
 		if (NULL != CaIMG.pbImgData)
 		{
             pbImgData = new BYTE[CaIMG.dwImgSize];
-			for (DWORD j = 0; j< dwImgSize; j++)
-			{
-				pbImgData[j] = CaIMG.pbImgData[j];
-			}
+			memcpy(pbImgData, CaIMG.pbImgData, dwImgSize);
 		}
 		else
 		{
@@ -35,16 +29,13 @@ CameraIMG& CameraIMG::operator=( const CameraIMG& CaIMG )
 	return *this;
 }
 
-CameraIMG::CameraIMG()
+CameraIMG::CameraIMG():
+	pbImgData(NULL)
 {
 	wImgWidth = 0;
 	wImgHeight = 0;
-	pbImgData = NULL;
 	dwImgSize = 0;
-	for (unsigned int i = 0; i< sizeof(chSavePath); i++)
-	{
-		chSavePath[i] = 0;
-	}
+	memset(chSavePath, '\0', sizeof(chSavePath));
 }
 
 CameraIMG::CameraIMG( const CameraIMG& CaIMG )
@@ -57,17 +48,11 @@ CameraIMG::CameraIMG( const CameraIMG& CaIMG )
 	wImgHeight = CaIMG.wImgHeight;
 	dwImgSize = CaIMG.dwImgSize;
 	wImgType = CaIMG.wImgType;
-	for (unsigned int i = 0; i< sizeof(chSavePath); i++)
-	{
-		chSavePath[i] = CaIMG.chSavePath[i];
-	}
+	memcpy(chSavePath, CaIMG.chSavePath, sizeof(chSavePath));
 	if (NULL != CaIMG.pbImgData)
 	{
-        pbImgData = new BYTE[CaIMG.dwImgSize];
-		for (DWORD j = 0; j< dwImgSize; j++)
-		{
-			pbImgData[j] = CaIMG.pbImgData[j];
-		}
+		pbImgData = new BYTE[CaIMG.dwImgSize];
+		memcpy(pbImgData, CaIMG.pbImgData, dwImgSize);
 	}
 	else
 	{

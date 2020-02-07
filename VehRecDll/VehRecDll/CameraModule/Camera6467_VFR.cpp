@@ -49,11 +49,12 @@ m_hDeleteResultThread(NULL)
 {
     InitializeCriticalSection(&m_csResult);
     ReadConfig();
+	m_h264Saver.initMode(1);
 
     m_hStatusCheckThread = (HANDLE)_beginthreadex(NULL, 0, Camera_StatusCheckThread, this, 0, NULL);
     m_hSendResultThread = (HANDLE)_beginthreadex(NULL, 0, s_SendResultThreadFunc, this, 0, NULL);
-    m_hDeleteLogThread = (HANDLE)_beginthreadex(NULL, 0, s_DeleteLogThreadFunc, this, 0, NULL);
-    m_hDeleteResultThread = (HANDLE)_beginthreadex(NULL, 0, s_DeleteResultThreadFunc, this, 0, NULL);
+	m_hDeleteLogThread = (HANDLE)_beginthreadex(NULL, 0, s_DeleteLogThreadFunc, this, 0, NULL);
+	m_hDeleteResultThread = (HANDLE)_beginthreadex(NULL, 0, s_DeleteResultThreadFunc, this, 0, NULL);
 }
 
 
@@ -85,8 +86,8 @@ m_hDeleteResultThread(NULL)
 
     m_hStatusCheckThread = (HANDLE)_beginthreadex(NULL, 0, Camera_StatusCheckThread, this, 0, NULL);
     m_hSendResultThread = (HANDLE)_beginthreadex(NULL, 0, s_SendResultThreadFunc, this, 0, NULL);
-    m_hDeleteLogThread = (HANDLE)_beginthreadex(NULL, 0, s_DeleteLogThreadFunc, this, 0, NULL);
-    m_hDeleteResultThread = (HANDLE)_beginthreadex(NULL, 0, s_DeleteResultThreadFunc, this, 0, NULL);
+	m_hDeleteLogThread = (HANDLE)_beginthreadex(NULL, 0, s_DeleteLogThreadFunc, this, 0, NULL);
+	m_hDeleteResultThread = (HANDLE)_beginthreadex(NULL, 0, s_DeleteResultThreadFunc, this, 0, NULL);
 }
 
 Camera6467_VFR::~Camera6467_VFR()
@@ -96,7 +97,7 @@ Camera6467_VFR::~Camera6467_VFR()
 
     m_Camera_Plate = nullptr;
     SetCheckThreadExit(true);
-    m_MySemaphore.notify(GetCurrentThreadId());
+    //m_MySemaphore.notify(GetCurrentThreadId());
     SetResultCallback(NULL, NULL);
     Tool_SafeCloseThread(m_hStatusCheckThread);
     Tool_SafeCloseThread(m_hSendResultThread);
@@ -1136,7 +1137,7 @@ size_t Camera6467_VFR::GetResultListSize()
 
 void Camera6467_VFR::TryWaitCondition()
 {
-    m_MySemaphore.tryDecrease(GetCurrentThreadId());
+    //m_MySemaphore.tryDecrease(GetCurrentThreadId());
 }
 
 int Camera6467_VFR::RecordInfoBegin(DWORD dwCarID)
@@ -1227,7 +1228,7 @@ int Camera6467_VFR::RecordInfoEnd(DWORD dwCarID)
                 {
                     WriteFormatLog("current length %f is larger than max length %d, clear list first.", m_pResult->fVehLenth, m_iSuperLenth);
                    // m_resultList.ClearALL();
-                    m_MySemaphore.resetCount(GetCurrentThreadId());
+                    //m_MySemaphore.resetCount(GetCurrentThreadId());
                     m_VfrResultList.ClearALLResult();                    
                 }
                 WriteFormatLog("push one result to list, current list plate NO:\n");
@@ -1259,8 +1260,13 @@ int Camera6467_VFR::RecordInfoEnd(DWORD dwCarID)
                 else
                 {
                     m_dwLastCarID = dwCarID;
-                    m_MySemaphore.notify(GetCurrentThreadId());
+                    //m_MySemaphore.notify(GetCurrentThreadId());
                 }
+				if (m_VfrResultList.size() >= 10)
+				{
+					WriteFormatLog("m_VfrResultList size larger than 10 , remvoe first one.");
+					m_VfrResultList.pop_front();
+				}
                 m_VfrResultList.push_back(pResult);
                 WriteFormatLog("after push, list plate NO:\n");
                 BaseCamera::WriteLog(m_VfrResultList.GetAllPlateString().c_str());                
@@ -2090,11 +2096,15 @@ unsigned int Camera6467_VFR::SendResultThreadFunc_WithNoSignal()
     while (!GetCheckThreadExit())
     {
         Sleep(10);
+		if (mode_noCallback == GetConnectMode())
+		{
+			continue;
+		}
         //m_MySemaphore.wait(GetCurrentThreadId());
         if (RESULT_MODE_FRONT == m_iResultModule
             && GetResultListSize() > 0)
         {
-            m_MySemaphore.wait(GetCurrentThreadId());
+            //m_MySemaphore.wait(GetCurrentThreadId());
             pResult = GetFrontResult();
         }
         else
@@ -2149,7 +2159,7 @@ unsigned int Camera6467_VFR::SendResultThreadFunc_WithNoSignal()
                 pResult->chPlateNO,
                 pResult->chPlateTime,
                 EXCEPTION_TIME_OUT);
-            m_MySemaphore.resetCount(GetCurrentThreadId());
+            //m_MySemaphore.resetCount(GetCurrentThreadId());
             ClearALLResult();
         }
 
@@ -2161,10 +2171,10 @@ unsigned int Camera6467_VFR::SendResultThreadFunc_WithNoSignal()
                 DeleteFrontResult(NULL);
                 bSendResult = false;
             }
-            else
-            {
-                m_MySemaphore.notify(GetCurrentThreadId());
-            }
+            //else
+            //{
+            //    m_MySemaphore.notify(GetCurrentThreadId());
+            //}
         }
 
         pResult = NULL;

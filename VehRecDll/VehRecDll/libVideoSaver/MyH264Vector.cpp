@@ -51,7 +51,7 @@ int MyH264DataVector::GetOldestDataIndex()
         }
         else
         {
-            return m_iInsertIndex + 10;
+            return m_iInsertIndex + 20;
         }        
     }
 }

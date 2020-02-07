@@ -8,6 +8,7 @@
 #include "cameraModule/DeviceListManager.h"
 #include"HvDevice/HvDeviceCommDef.h"
 #include "SendStatues_def.h"
+#include <list>
 
 #ifdef WINDOWS
 #define WRITE_LOG(fmt, ...) Tool_WriteFormatLog("%s:: "fmt, __FUNCTION__, ##__VA_ARGS__);
@@ -21,6 +22,30 @@
 
 extern char g_chLogPath[256];
 int g_iLogHoldDays = 30;
+
+std::list<unsigned long> g_SentCarList;
+bool FuncfindIfSendBefore(std::list<unsigned long>& carIDList, unsigned long carID)
+{
+	if (carIDList.size() <= 0)
+	{
+		return false;
+	}
+	if (std::end(carIDList) == std::find(std::begin(carIDList), std::end(carIDList), carID))
+	{
+		return false;
+	}
+	return true;
+}
+
+void AddCarIDToTheList(std::list<unsigned long>& carIDList, unsigned long carID)
+{
+	if (carIDList.size() > 5)
+	{
+		carIDList.pop_front();
+	}
+	carIDList.push_back(carID);
+}
+
 
 VEHRECDLL_API int WINAPI VehRec_InitEx(int iLog, char *iLogPath, int iLogSaveDay)
 {
@@ -101,6 +126,7 @@ VEHRECDLL_API int WINAPI VehRec_Connect(char *devIP, char *savepath)
                 pCamera->SetLoginID(i + BASIC_NUMBER);
                 pCamera->SetImageDir(savepath);
                 pCamera->SetLogHoldDays(g_iLogHoldDays);
+				pCamera->SetConnectMode(mode_noCallback);
                 if (strlen(g_chLogPath) > 0)
                 {
                     pCamera->SetLogPath(g_chLogPath);
@@ -163,6 +189,7 @@ VEHRECDLL_API int WINAPI VehRec_ConnectEX(char *devIP, char *savepath, VehRec_Ca
                 pCamera->SetLoginID(i + BASIC_NUMBER);
                 pCamera->SetImageDir(savepath);
                 pCamera->SetLogHoldDays(g_iLogHoldDays);
+				pCamera->SetConnectMode(mode_callback);
                 if (strlen(g_chLogPath) > 0)
                 {
                     pCamera->SetLogPath(g_chLogPath);
@@ -233,6 +260,12 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
     Camera6467_VFR* pCamera = (Camera6467_VFR*)DeviceListManager::GetInstance()->GetDeviceById(handle - BASIC_NUMBER);
     if (pCamera != NULL)
     {
+		if (mode_callback == pCamera->GetConnectMode())
+		{
+			WRITE_LOG("当前初始化为回调模式，不支持该接口调用");
+			return -1;
+		}
+
         std::shared_ptr<CameraResult> pTempResult = nullptr;
 
         int iDelayTime = pCamera->getResultWaitTime();
@@ -280,7 +313,7 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
 
             if (pTempResult
                 && pCamera->checkIfHasThreePic(pTempResult)
-                && dwLastCarID != pTempResult->dwCarID
+                && !FuncfindIfSendBefore(g_SentCarList, pTempResult->dwCarID)
                 )
             {
                 //dwLastCarID = pTempResult->dwCarID;
@@ -298,15 +331,16 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
         if (pTempResult)
         {
             WRITE_LOG("get result success, plate number = %s, carID = %lu.", pTempResult->chPlateNO, pTempResult->dwCarID);
-            if (dwLastCarID != pTempResult->dwCarID)
+            if (!FuncfindIfSendBefore(g_SentCarList, pTempResult->dwCarID))
             {
-                dwLastCarID = pTempResult->dwCarID;
+				AddCarIDToTheList(g_SentCarList, pTempResult->dwCarID);
             }
             else
             {
                 WRITE_LOG("current reesult, plate number = %s, carID = %lu is same with last one, through it, return -1.", pTempResult->chPlateNO, pTempResult->dwCarID);
+				pCamera->DeleteFrontResult(NULL);
                 return -1;
-            }
+            }			
 
             char* pSideImagePath = NULL;
             unsigned char* pSideImageData = NULL;
@@ -477,8 +511,9 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
             //WRITE_LOG("get recfile finish = %s", recfile);
             if (RESULT_MODE_FRONT == pCamera->GetResultMode())
             {
+				WRITE_LOG("ResultMode == RESULT_MODE_FRONT, DeleteFrontResult");
                 pCamera->DeleteFrontResult(NULL);
-                pCamera->TryWaitCondition();
+                //pCamera->TryWaitCondition();
             }
             
             iRet = 0;
