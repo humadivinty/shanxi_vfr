@@ -1,0 +1,493 @@
+// VehRecDll.cpp : 定义 DLL 应用程序的导出函数。
+//
+
+#include "stdafx.h"
+#include "VehRecDll.h"
+#include "utilityTool/ToolFunction.h"
+#include "cameraModule/Camera6467_VFR.h"
+#include "cameraModule/DeviceListManager.h"
+#include"HvDevice/HvDeviceCommDef.h"
+#include "SendStatues_def.h"
+
+#ifdef WINDOWS
+#define WRITE_LOG(fmt, ...) Tool_WriteFormatLog("%s:: "fmt, __FUNCTION__, ##__VA_ARGS__);
+#else
+//#define WRITE_LOG(...) Tool_WriteFormatLog("%s:: ", __FUNCTION__, ##__VA_ARGS__);
+#define WRITE_LOG(fmt,...) Tool_WriteFormatLog("%s:: " fmt, __FUNCTION__,##__VA_ARGS__);
+#endif
+
+#define BASIC_NUMBER (1000)
+#define MAX_CAMERA_COUNT (10)
+
+extern char g_chLogPath[256];
+int g_iLogHoldDays = 30;
+
+VEHRECDLL_API int WINAPI VehRec_InitEx(int iLog, char *iLogPath, int iLogSaveDay)
+{
+    Tool_SetLogPath(iLogPath);
+    WRITE_LOG("iLog = %d, iLogPath = %s,iLogSaveDay = %d ", iLog, iLogPath, iLogSaveDay);
+    if (NULL == iLogPath 
+        || (iLogSaveDay <= 0 && iLog > 0))
+    {
+        WRITE_LOG("the parameter is invalid.");
+        return -1;
+    }
+    g_iLogHoldDays = iLogSaveDay;
+
+    char chTemp[256] = {0};
+    Tool_GetRootPathFromFileName(iLogPath, chTemp, sizeof(chTemp));
+    //int iRet = PathIsRoot(chTemp);
+    if (DRIVE_FIXED != GetDriveType(chTemp))
+    {
+        WRITE_LOG("the root path of %s is not  presence.",  iLogPath);
+        return -1;
+    }
+
+    for (int i = 0; i < MAX_CAMERA_COUNT; i++)
+    {
+        BaseCamera* pCamera = DeviceListManager::GetInstance()->GetDeviceById(i);
+        if (NULL != pCamera)
+        {
+            pCamera->SetLogPath(iLogPath);
+            pCamera->SetLogHoldDays(iLogSaveDay);
+        }
+    }
+    WRITE_LOG("finish");
+    return 0;
+}
+
+VEHRECDLL_API int WINAPI VehRec_Free()
+{
+    WRITE_LOG("begin");
+    DeviceListManager::GetInstance()->ClearAllDevice();
+    WRITE_LOG("finish.");
+    return 0;
+}
+
+VEHRECDLL_API int WINAPI VehRec_Connect(char *devIP, char *savepath)
+{
+    WRITE_LOG("begin, devIP = %s, savepath = %s", devIP, savepath);
+    int iRet = -4;
+
+    if (1 != Tool_checkIP(devIP))
+    {
+        WRITE_LOG("ip address is invlalid, return %d.", iRet);
+        return iRet;
+    }
+
+    char chTemp[256] = { 0 };
+    Tool_GetRootPathFromFileName(savepath, chTemp, sizeof(chTemp));
+    if (!PathIsRoot(chTemp))
+    {
+        WRITE_LOG("the root path of %s is not  presence.", savepath);
+        return -1;
+    }
+
+    BaseCamera* pCamera = DeviceListManager::GetInstance()->GetDeviceByIpAddress(devIP);
+    if (pCamera != NULL)
+    {
+        int iHandle = DeviceListManager::GetInstance()->GetDeviceIdByIpAddress(devIP);
+        WRITE_LOG("find device %s, ID = %ld", devIP, iHandle);
+        iRet = iHandle;
+    }
+    else
+    {
+        for (int i = 0; i < MAX_CAMERA_COUNT; i++)
+        {
+            if (NULL == DeviceListManager::GetInstance()->GetDeviceById(i))
+            {
+                Camera6467_VFR* pCamera = new Camera6467_VFR();
+                pCamera->SetCameraIP(devIP);
+                pCamera->SetLoginID(i + BASIC_NUMBER);
+                pCamera->SetImageDir(savepath);
+                pCamera->SetLogHoldDays(g_iLogHoldDays);
+                if (strlen(g_chLogPath) > 0)
+                {
+                    pCamera->SetLogPath(g_chLogPath);
+                }
+                if (pCamera->ConnectToCamera() == 0)
+                {
+                    WRITE_LOG("connect to camera success.");
+                }
+                else
+                {
+                    WRITE_LOG("connect to camera failed.");
+                }
+                iRet = i;
+                DeviceListManager::GetInstance()->AddOneDevice(i, pCamera);
+                WRITE_LOG("create camera success, device id= %d, ip = %s", i, devIP);
+                break;
+            }
+        }
+    }
+    iRet = iRet >= 0 ? iRet + BASIC_NUMBER : iRet;
+
+    WRITE_LOG("finish, return %d", iRet);
+    return iRet;
+}
+
+VEHRECDLL_API int WINAPI VehRec_ConnectEX(char *devIP, char *savepath, VehRec_CarData callBackFun)
+{
+    WRITE_LOG("begin, devIP = %s, savepath = %s", devIP, savepath);
+    int iRet = -4;
+
+    if (1 != Tool_checkIP(devIP))
+    {
+        WRITE_LOG("ip address is invlalid, return %d.", iRet);
+        return iRet;
+    }
+
+    char chTemp[256] = { 0 };
+    Tool_GetRootPathFromFileName(savepath, chTemp, sizeof(chTemp));
+    if (!PathIsRoot(chTemp))
+    {
+        WRITE_LOG("the root path of %s is not  presence.", savepath);
+        return -1;
+    }
+
+    BaseCamera* pCamera = DeviceListManager::GetInstance()->GetDeviceByIpAddress(devIP);
+    if (pCamera != NULL)
+    {
+        int iHandle = DeviceListManager::GetInstance()->GetDeviceIdByIpAddress(devIP);
+        WRITE_LOG("find device %s, ID = %ld", devIP, iHandle);
+        iRet = iHandle;
+    }
+    else
+    {
+        for (int i = 0; i < MAX_CAMERA_COUNT; i++)
+        {
+            if (NULL == DeviceListManager::GetInstance()->GetDeviceById(i))
+            {
+                Camera6467_VFR* pCamera = new Camera6467_VFR();
+                pCamera->SetCameraIP(devIP);
+                pCamera->SetLoginID(i + BASIC_NUMBER);
+                pCamera->SetImageDir(savepath);
+                pCamera->SetLogHoldDays(g_iLogHoldDays);
+                if (strlen(g_chLogPath) > 0)
+                {
+                    pCamera->SetLogPath(g_chLogPath);
+                }
+                if (pCamera->ConnectToCamera() == 0)
+                {
+                    WRITE_LOG("connect to camera success.");
+                    //pCamera->SetH264Callback(0, 0, 0, H264_RECV_FLAG_REALTIME);
+                    pCamera->SetResultCallback(callBackFun, NULL);
+                }
+                else
+                {
+                    WRITE_LOG("connect to camera failed.");
+                }
+                iRet = i;
+                DeviceListManager::GetInstance()->AddOneDevice(i, pCamera);
+                WRITE_LOG("create camera success, device id= %d, ip = %s", i, devIP);
+                break;
+            }
+        }
+    }
+    iRet = iRet >= 0 ? iRet + BASIC_NUMBER : iRet;
+
+    WRITE_LOG("finish, return %d", iRet);
+    return iRet;
+}
+
+VEHRECDLL_API void WINAPI VehRec_DisConnect(int handle)
+{
+    WRITE_LOG("begin, handle = %d", handle);
+    if (handle >= BASIC_NUMBER)
+    {
+        DeviceListManager::GetInstance()->EraseDevice(handle - BASIC_NUMBER);
+    }
+    WRITE_LOG("finish");
+}
+
+VEHRECDLL_API int WINAPI VehRec_VEHSignle(int handle, int sig)
+{
+    WRITE_LOG("begin, handle = %d, sig = %d", handle, sig);
+    int iRet = -1;
+    Camera6467_VFR* pCamera = (Camera6467_VFR*)DeviceListManager::GetInstance()->GetDeviceById(handle - BASIC_NUMBER);
+    if (pCamera != NULL)
+    {
+        int iSendStatus = sig == 1 ? send_begin : send_Finish;
+        pCamera->SetResultSendSignal(-1, iSendStatus);
+        iRet = 0;
+    }
+    WRITE_LOG("finish, return %d", iRet);
+    return iRet;
+}
+
+VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *platepic, char *recfile)
+{
+    WRITE_LOG("begin, handle = %d, colpic = %s, platepic = %s, recfile = %s", handle, colpic, platepic, recfile);
+    if (NULL == colpic
+        || NULL == platepic
+        || NULL == recfile)
+    {
+        WRITE_LOG("parameter is invalid.");
+        return -1;
+    }
+    Tool_MakeFileDir(colpic);
+    Tool_MakeFileDir(platepic);
+    Tool_MakeFileDir(recfile);
+
+    int iRet = -1;
+    Camera6467_VFR* pCamera = (Camera6467_VFR*)DeviceListManager::GetInstance()->GetDeviceById(handle - BASIC_NUMBER);
+    if (pCamera != NULL)
+    {
+        std::shared_ptr<CameraResult> pTempResult = nullptr;
+
+        int iDelayTime = pCamera->getResultWaitTime();
+        long iFirstTic= GetTickCount();
+        long iCurrentTic = iFirstTic;
+//        do 
+//        {
+//            iCurrentTic = GetTickCount();
+//           
+//#ifdef USE_LAST_RESULT
+//            //if (pCamera->GetLastResultIfReceiveComplete())
+//            {
+//                pTempResult = pCamera->GetLastResult();
+//            }
+//#else
+//            pTempResult = pCamera->GetFrontResult();
+//#endif            
+//            if (pTempResult
+//                && pCamera->checkIfHasThreePic(pTempResult)
+//                )
+//            {
+//                break;
+//            }
+//        } while (iCurrentTic > (iFirstTic + iDelayTime));
+
+        static unsigned long dwLastCarID = 0;
+        do
+        {
+            iCurrentTic = GetTickCount();
+            bool bFind = false;
+
+//#ifdef USE_LAST_RESULT
+//            pTempResult = pCamera->GetLastResult();
+//#else
+//            pTempResult = pCamera->GetFrontResult();
+//#endif       
+            if (RESULT_MODE_FRONT == pCamera->GetResultMode())
+            {
+                pTempResult = pCamera->GetFrontResult();
+            }
+            else
+            {
+                pTempResult = pCamera->GetLastResult();
+            }
+
+            if (pTempResult
+                && pCamera->checkIfHasThreePic(pTempResult)
+                && dwLastCarID != pTempResult->dwCarID
+                )
+            {
+                //dwLastCarID = pTempResult->dwCarID;
+                break;
+            }
+            if (pTempResult
+                && dwLastCarID == pTempResult->dwCarID)
+            {
+                pCamera->DeleteFrontResult(NULL);
+                WRITE_LOG("result , plate number = %s, carID = %lu but it is same with last result , search again.", pTempResult->chPlateNO, pTempResult->dwCarID);
+            }
+            Sleep(50);
+        } while (iCurrentTic < (iFirstTic + iDelayTime));
+
+        if (pTempResult)
+        {
+            WRITE_LOG("get result success, plate number = %s, carID = %lu.", pTempResult->chPlateNO, pTempResult->dwCarID);
+            if (dwLastCarID != pTempResult->dwCarID)
+            {
+                dwLastCarID = pTempResult->dwCarID;
+            }
+            else
+            {
+                WRITE_LOG("current reesult, plate number = %s, carID = %lu is same with last one, through it, return -1.", pTempResult->chPlateNO, pTempResult->dwCarID);
+                return -1;
+            }
+
+            char* pSideImagePath = NULL;
+            unsigned char* pSideImageData = NULL;
+            unsigned long  iSideImageSize = 0;
+
+            char* pTailImagePath = NULL;
+            unsigned char* pTailImageData = NULL;
+            unsigned long iTailImageSize = 0;
+
+            char* pVideoPath = NULL;
+
+            int iErrorMode = 0;
+            if (pTempResult->CIMG_LastSnapshot.dwImgSize > 0
+                && pTempResult->CIMG_BestCapture.dwImgSize <= 0)
+            {
+                iErrorMode = 1;
+            }
+
+            switch (iErrorMode)
+            {
+            case 0:
+                if (pTempResult->CIMG_BestCapture.dwImgSize > 0)
+                {
+                    pSideImagePath = pTempResult->CIMG_BestCapture.chSavePath;
+                    pSideImageData = pTempResult->CIMG_BestCapture.pbImgData;
+                    iSideImageSize = pTempResult->CIMG_BestCapture.dwImgSize;
+                }
+                if (pTempResult->CIMG_LastCapture.dwImgSize > 0)
+                {
+                    pTailImagePath = pTempResult->CIMG_LastCapture.chSavePath;
+                    pTailImageData = pTempResult->CIMG_LastCapture.pbImgData;
+                    iTailImageSize = pTempResult->CIMG_LastCapture.dwImgSize;
+                }
+                if (strlen(pTempResult->chSaveFileName) > 0)
+                {
+                    pVideoPath = pTempResult->chSaveFileName;
+                }
+                break;
+            case 1:
+                if (pTempResult->CIMG_LastSnapshot.dwImgSize > 0)
+                {
+                    pTailImagePath = pTempResult->CIMG_LastSnapshot.chSavePath;
+                    pTailImageData = pTempResult->CIMG_LastCapture.pbImgData;
+                    iTailImageSize = pTempResult->CIMG_LastCapture.dwImgSize;
+                }
+                if (strlen(pTempResult->chSaveFileName) > 0)
+                {
+                    pVideoPath = pTempResult->chSaveFileName;
+                }
+                break;
+            default:
+                break;
+            }
+
+            BOOL bRet = FALSE;
+            if (NULL != pSideImagePath
+                && strlen(pSideImagePath) > 0)
+            {
+                if (strlen(colpic) > 0)
+                {
+                    //rename(pSideImagePath, colpic);
+                    //bRet = CopyFile(pSideImagePath, colpic, FALSE);
+                    //WRITE_LOG("get colpic finish = %s, operation code = %d, getlast error = %s",
+                    //    colpic,
+                    //    bRet,
+                    //    bRet ? "NULL" : Tool_GetLastErrorAsString().c_str());
+                    bRet = Tool_SaveFileToPath(colpic, pSideImageData, iSideImageSize);
+                    WRITE_LOG("get colpic success = %s, return code = %d", colpic, bRet);
+                }
+                else
+                {
+                    sprintf(colpic, "%s", pSideImagePath);
+                }
+            }
+            else
+            {
+                WRITE_LOG("side image is not ready.");
+            }
+            
+            if (NULL != pTailImagePath
+                && strlen(pTailImagePath) > 0)
+            {
+                if (strlen(platepic) > 0)
+                {
+                    //rename(pTailImagePath, colpic);
+                    //bRet = FALSE;
+                    //bRet = CopyFile(pTailImagePath, platepic, FALSE);
+                    //WRITE_LOG("get platepic finish = %s, operation code = %d, getlast error = %s",
+                    //    platepic,
+                    //    bRet,
+                    //    bRet ? "NULL" : Tool_GetLastErrorAsString().c_str());
+
+                    bRet = Tool_SaveFileToPath(platepic, pTailImageData, iTailImageSize);
+                    WRITE_LOG("get platepic success = %s, return code = %d", platepic, bRet);
+                }
+                else
+                {
+                    sprintf(platepic, "%s", pTailImagePath);
+                }
+            }
+            else
+            {
+                WRITE_LOG("tail image is not ready.");
+            }
+
+            if (NULL != pVideoPath
+                && strlen(pVideoPath) > 0)
+            {
+                if (strlen(recfile) > 0)
+                {
+                    //rename(pVideoPath, recfile);
+                    bRet = FALSE;
+                    bRet = CopyFile(pVideoPath, recfile, FALSE);
+                    WRITE_LOG("get recfile finish = %s, operation code = %d, getlast error = %s",
+                        recfile,
+                        bRet,
+                        bRet ? "NULL" : Tool_GetLastErrorAsString().c_str());
+                }
+                else
+                {
+                    sprintf(recfile, "%s", pVideoPath);
+                }
+            }
+            else
+            {
+                WRITE_LOG("video is not ready.");
+            }
+
+            //if (pTempResult->CIMG_BestCapture.dwImgSize > 0
+            //    && strlen(pTempResult->CIMG_BestCapture.chSavePath) > 0)
+            //{                
+            //    if (strlen(colpic) > 0)
+            //    {
+            //        rename(pTempResult->CIMG_BestCapture.chSavePath, colpic);
+            //    }
+            //    else
+            //    {
+            //        sprintf(colpic, "%s", pTempResult->CIMG_BestCapture.chSavePath);
+            //    }
+            //}
+            //WRITE_LOG("get colpic finish = %s", colpic);
+
+            //if (pTempResult->CIMG_LastCapture.dwImgSize > 0
+            //    && strlen(pTempResult->CIMG_LastCapture.chSavePath) > 0)
+            //{                
+            //    if (strlen(platepic) > 0)
+            //    {
+            //        rename(pTempResult->CIMG_LastCapture.chSavePath, platepic);
+            //    }
+            //    else
+            //    {
+            //        sprintf(platepic, "%s", pTempResult->CIMG_LastCapture.chSavePath);
+            //    }
+            //}
+            //WRITE_LOG("get platepic finish = %s", platepic);
+
+            //if (strlen(pTempResult->chSaveFileName) > 0)
+            //{                
+            //    if (strlen(recfile) > 0)
+            //    {
+            //        rename(pTempResult->chSaveFileName, recfile);
+            //    }
+            //    else
+            //    {
+            //        sprintf(recfile, "%s", pTempResult->chSaveFileName);
+            //    }
+            //}
+            //WRITE_LOG("get recfile finish = %s", recfile);
+            if (RESULT_MODE_FRONT == pCamera->GetResultMode())
+            {
+                pCamera->DeleteFrontResult(NULL);
+                pCamera->TryWaitCondition();
+            }
+            
+            iRet = 0;
+        }
+        else
+        {
+            WRITE_LOG("result is not ready");
+        }
+    }
+    WRITE_LOG("finish, return %d", iRet);
+    return iRet;
+}

@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VehRecDll", "VehRecDll\VehRecDll.vcxproj", "{20D0755D-7942-411A-BA9C-5EB5CDC21CFB}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestTool_VehRecDll", "TestTool_VehRecDll\TestTool_VehRecDll.vcxproj", "{8D40292D-D49F-4CFA-9792-FE40EB16811A}"
+	ProjectSection(ProjectDependencies) = postProject
+		{20D0755D-7942-411A-BA9C-5EB5CDC21CFB} = {20D0755D-7942-411A-BA9C-5EB5CDC21CFB}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{20D0755D-7942-411A-BA9C-5EB5CDC21CFB}.Debug|Win32.ActiveCfg = Debug|Win32
+		{20D0755D-7942-411A-BA9C-5EB5CDC21CFB}.Debug|Win32.Build.0 = Debug|Win32
+		{20D0755D-7942-411A-BA9C-5EB5CDC21CFB}.Release|Win32.ActiveCfg = Release|Win32
+		{20D0755D-7942-411A-BA9C-5EB5CDC21CFB}.Release|Win32.Build.0 = Release|Win32
+		{8D40292D-D49F-4CFA-9792-FE40EB16811A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8D40292D-D49F-4CFA-9792-FE40EB16811A}.Debug|Win32.Build.0 = Debug|Win32
+		{8D40292D-D49F-4CFA-9792-FE40EB16811A}.Release|Win32.ActiveCfg = Release|Win32
+		{8D40292D-D49F-4CFA-9792-FE40EB16811A}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

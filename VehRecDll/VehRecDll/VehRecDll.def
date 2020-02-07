@@ -1,0 +1,10 @@
+LIBRARY
+EXPORTS
+
+VehRec_InitEx
+VehRec_Free
+VehRec_Connect
+VehRec_ConnectEX
+VehRec_DisConnect
+VehRec_VEHSignle
+VehRec_GetCarData
