@@ -468,6 +468,11 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
                         recfile,
                         bRet,
                         bRet ? "NULL" : Tool_GetLastErrorAsString().c_str());
+					if (bRet
+						&& 0 == remove(pVideoPath))
+					{
+						WRITE_LOG("remove file %s success.", pVideoPath);
+					}
                 }
                 else
                 {
