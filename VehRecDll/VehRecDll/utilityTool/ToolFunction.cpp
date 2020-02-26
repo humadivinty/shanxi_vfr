@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "ToolFunction.h"
-#include "log4z.h"
+//#include "log4z.h"
 #include <string>
 #include<shellapi.h>
 #include <stdio.h>
@@ -37,6 +37,14 @@
 #include <gdiplus.h>
 using namespace Gdiplus;
 #pragma  comment(lib, "gdiplus.lib")
+#endif
+
+#ifndef LOGFMTE
+#define LOGFMTE printf
+#endif
+
+#ifndef LOGFMTD
+#define LOGFMTD printf
 #endif
 
 

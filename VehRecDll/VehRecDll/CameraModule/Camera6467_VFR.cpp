@@ -5,7 +5,7 @@
 #include "HvDevice/HvDeviceNew.h"
 #include "HvDevice/HvCamera.h"
 #include "utilityTool/ToolFunction.h"
-#include "utilityTool/log4z.h"
+//#include "utilityTool/log4z.h"
 #include <process.h>
 #include <exception>
 #include <new>
@@ -15,7 +15,13 @@
 #define VEHICLE_SIDE_NODE_NAME "Image3"
 #define VEHICLE_TAIL_NODE_NAME "Image4"
 
+#ifndef LOGFMTE
+#define LOGFMTE printf
+#endif
 
+#ifndef LOGFMTD
+#define LOGFMTD printf
+#endif
 
 #define CHECK_ARG(arg)\
     if (arg == NULL) \
@@ -567,10 +573,10 @@ void Camera6467_VFR::ReadConfig()
     Tool_ReadIntValueFromConfigFile(INI_FILE_NAME, "Result", "WaitTimeOut", iTempValue);
     m_iWaitVfrTimeOut = iTempValue > 0 ? iTempValue : 2;
 
-    iTempValue = 0;
-    Tool_ReadIntValueFromConfigFile(INI_FILE_NAME, "Result", "HoldDays", iTempValue);
-    iTempValue = iTempValue > 0 ? iTempValue : 0;
-    SetReulstHoldDay(iTempValue);
+    //iTempValue = 0;
+    //Tool_ReadIntValueFromConfigFile(INI_FILE_NAME, "Result", "HoldDays", iTempValue);
+    //iTempValue = iTempValue > 0 ? iTempValue : 0;
+    //SetReulstHoldDay(iTempValue);
 
     //值为1时，表示使用最早接收到的结果，
     iTempValue = 1;
@@ -1077,7 +1083,10 @@ void Camera6467_VFR::DeleteFrontResult(const char* plateNo)
         if (strPlateNo.empty())
         {
             WriteFormatLog("DeleteFrontResult, cant not get plate number , so delete front result.");
-            m_VfrResultList.pop_front();
+			if (!m_VfrResultList.empty())
+			{
+				m_VfrResultList.pop_front();
+			}            
         }
         else
         {
@@ -2293,7 +2302,10 @@ SendStatues Camera6467_VFR::getFrontSendSignal()
 void Camera6467_VFR::deleteFrontSendSignal()
 {
     EnterCriticalSection(&m_csFuncCallback);
-    StatusList.pop_front();
+	if (!StatusList.empty())
+	{
+		StatusList.pop_front();
+	}    
     LeaveCriticalSection(&m_csFuncCallback);
 }
 

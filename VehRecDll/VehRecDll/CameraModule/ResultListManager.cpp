@@ -1,10 +1,17 @@
 #include "stdafx.h"
 #include "ResultListManager.h"
 #include "utilityTool/ToolFunction.h"
-#include "utilityTool/log4z.h"
+//#include "utilityTool/log4z.h"
 #include <new>
 #include <exception>
 
+#ifndef LOGFMTE
+#define LOGFMTE printf
+#endif
+
+#ifndef LOGFMTD
+#define LOGFMTD printf
+#endif
 
 ResultListManager::ResultListManager()
 {
@@ -387,23 +394,24 @@ int ResultListManager::GetPositionByPlateNo(const char* plateNo)
 
 void ResultListManager::DeleteToPosition(int position)
 {
-    try
-    {
-        if (position < 0)
-        {
-            return;
-        }
-        std::unique_lock<std::mutex> locker(m_mtx);
-        //MYLocker locker(&m_hcs);
-        size_t iPosition = (position >= m_list.size()) ? (m_list.size() - 1) : position;
-        if (!m_list.empty())
-        {
-            for (int i = 0; i <= iPosition; i++)
-            {
-                m_list.pop_front();
-            }
-        }
-    }
+	try
+	{
+		if (position < 0)
+		{
+			return;
+		}
+		std::unique_lock<std::mutex> locker(m_mtx);
+		//MYLocker locker(&m_hcs);
+		size_t iPosition = (position >= m_list.size()) ? (m_list.size() - 1) : position;
+
+		for (int i = 0; i <= iPosition; i++)
+		{
+			if (!m_list.empty())
+			{
+				m_list.pop_front();
+			}
+		}
+	}
     catch (std::bad_exception& e)
     {
         LOGFMTE("ResultListManager::DeleteToPosition, bad_exception, error msg = %s", e.what());

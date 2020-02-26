@@ -78,9 +78,6 @@
     <ClInclude Include="libAVI\cAviLib.h">
       <Filter>libAVI</Filter>
     </ClInclude>
-    <ClInclude Include="utilityTool\log4z.h">
-      <Filter>utilityTool</Filter>
-    </ClInclude>
     <ClInclude Include="utilityTool\ToolFunction.h">
       <Filter>utilityTool</Filter>
     </ClInclude>
@@ -145,9 +142,6 @@
     </ClCompile>
     <ClCompile Include="libAVI\cAviLib.cpp">
       <Filter>libAVI</Filter>
-    </ClCompile>
-    <ClCompile Include="utilityTool\log4z.cpp">
-      <Filter>utilityTool</Filter>
     </ClCompile>
     <ClCompile Include="utilityTool\ToolFunction.cpp">
       <Filter>utilityTool</Filter>

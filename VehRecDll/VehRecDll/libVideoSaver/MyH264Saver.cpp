@@ -10,8 +10,8 @@
 #include <algorithm>
 
 //#include"utilityTool/easylogging++.h"
-#include"utilityTool/log4z.h"
-using namespace zsummer::log4z;
+//#include"utilityTool/log4z.h"
+//using namespace zsummer::log4z;
 
 #define  WINDOWS
 
@@ -176,29 +176,29 @@ bool MyH264Saver::addDataStruct(CustH264Struct* pDataStruct)
 
 
 
-        LOG_INFO(m_iFrameLogID, " frameIndex = "<< pData->index
-                                        << " frameTimeStame = "<< pData->m_llFrameTime
-                                        << " frame time string = "<<  chFrameTime);
+        //LOG_INFO(m_iFrameLogID, " frameIndex = "<< pData->index
+        //                                << " frameTimeStame = "<< pData->m_llFrameTime
+        //                                << " frame time string = "<<  chFrameTime);
 
-//        FILE *file = NULL;
-//        file = fopen(chLogFileName, "a+");
-//        if (file)
-//        {
-//            fprintf(file, "[%04d-%02d-%02d %02d:%02d:%02d:%03d] :frame index = %d m_llFrameTime =  %lld , frame time string = %s \n",
-//                stimeNow.wYear,
-//                stimeNow.wMonth,
-//                stimeNow.wDay,
-//                stimeNow.wHour,
-//                stimeNow.wMinute,
-//                stimeNow.wSecond,
-//                stimeNow.wMilliseconds,
-//                pData->index,
-//                pData->m_llFrameTime,
-//                chFrameTime);
+        FILE *file = NULL;
+        file = fopen(chLogFileName, "a+");
+        if (file)
+        {
+            fprintf(file, "[%04d-%02d-%02d %02d:%02d:%02d:%03d] :frame index = %d m_llFrameTime =  %I64d , frame time string = %s \n",
+                stimeNow.wYear,
+                stimeNow.wMonth,
+                stimeNow.wDay,
+                stimeNow.wHour,
+                stimeNow.wMinute,
+                stimeNow.wSecond,
+                stimeNow.wMilliseconds,
+                pData->index,
+                pData->m_llFrameTime,
+                chFrameTime);
 
-//            fclose(file);
-//            file = NULL;
-//        }
+            fclose(file);
+            file = NULL;
+        }
     }
 
     return true;
@@ -231,8 +231,10 @@ bool MyH264Saver::StartSaveH264(INT64 beginTimeStamp, const char* pchFilePath)
     SetStartTimeFlag(beginTimeStamp);
     SetIfFirstSave(true);
     SetStopTimeFlag(TIME_FLAG_UNDEFINE);
-    SetSaveFlag(SAVING_FLAG_SAVING);
-
+	if (GetProcessMode() != 1)
+	{
+		SetSaveFlag(SAVING_FLAG_SAVING);
+	}
     m_lastvideoidx = -1;
     return true;
 }
@@ -241,6 +243,10 @@ bool MyH264Saver::StopSaveH264(INT64 TimeFlag)
 {
     //SetSaveFlag(SAVING_FLAG_SHUT_DOWN);
     SetStopTimeFlag(TimeFlag);
+	if (GetProcessMode() == 1)
+	{
+		SetSaveFlag(SAVING_FLAG_SAVING);
+	}
     return true;
 }
 
@@ -583,7 +589,7 @@ DWORD MyH264Saver::processH264Data_mp4_new()
     {
 
         char buf[256] = { 0 };
-        //iVideoStopTimeFlag = GetStopTimeFlag();
+        iVideoStopTimeFlag = GetStopTimeFlag();
         iVideoBeginTimeFlag = GetStartTimeFlag();
         iTimeNowFlag = GetTickCount();
 
@@ -607,7 +613,7 @@ DWORD MyH264Saver::processH264Data_mp4_new()
         size_t iBeginIndex = 0;
         int iFrameCount = 0;
         bool bFirstFrame = false;
-
+		int iListSize = 0;
         switch (iSaveFlag)
         {
         case SAVING_FLAG_NOT_SAVE:
@@ -634,7 +640,7 @@ DWORD MyH264Saver::processH264Data_mp4_new()
                 return (h264Data->m_llFrameTime >= iVideoBeginTimeFlag);
             }
             );
-          iBeginIndex = m_lDataStructList.size();
+          iListSize = m_lDataStructList.size();
 
           if(iter != std::end(m_lDataStructList))
           {
@@ -643,10 +649,20 @@ DWORD MyH264Saver::processH264Data_mp4_new()
           }
           else
           {
+			  iBeginIndex = iListSize;
               WriteFormatLog("can not find the first frame , use list size to replace index = %d ", iBeginIndex);
           }
           iFrameCount = (GetStopTimeFlag() - GetStartTimeFlag() )/40;
           WriteFormatLog("frame count = %d ", iFrameCount);
+		  if (iFrameCount <= 0)
+		  {
+			  WriteFormatLog("frame count<= 0, do nothing. ");
+#ifdef WINDOWS
+			  LeaveCriticalSection(&m_DataListLocker);
+#endif
+			  SetSaveFlag(SAVING_FLAG_NOT_SAVE);
+			  continue;
+		  }
 
           iterEnd =  std::end(m_lDataStructList);
 
@@ -675,10 +691,26 @@ DWORD MyH264Saver::processH264Data_mp4_new()
               WriteFormatLog("use list index = %d to begin, and %d to end", iBeginIndex,  iBeginIndex + iFrameCount);
           }
 
+		  if (iBeginIndex < 0)
+		  {
+			  WriteFormatLog("iBeginIndex < 0, do nothing. ");
+#ifdef WINDOWS
+			  LeaveCriticalSection(&m_DataListLocker);
+#endif
+			  SetSaveFlag(SAVING_FLAG_NOT_SAVE);
+			  continue;
+		  }
 
           bFirstFrame = true;
           for(auto it = std::begin(m_lDataStructList) + iBeginIndex; it != iterEnd ; it++)
           {
+			  if ( it < std::begin(m_lDataStructList)
+				  || it >= std::end(m_lDataStructList)
+				  )
+			  {
+				  WriteFormatLog("iterator is larger than list size, break.");
+				  break;
+			  }
               pData = *it;
 
               if(bFirstFrame
@@ -908,58 +940,58 @@ void MyH264Saver::WriteFormatLog(const char *szfmt, ...)
 
     //LoggerId logid_videoSave = ILog4zManager::getRef().findLogger("videoSave");
 
-    LOG_INFO(m_iVideoLogID, m_chLogBuf);
+    //LOG_INFO(m_iVideoLogID, m_chLogBuf);
 
-//    SYSTEMTIME  stimeNow = Tool_GetCurrentTime();
+    SYSTEMTIME  stimeNow = Tool_GetCurrentTime();
 
-//    char chBuffer1[256] = { 0 };
-//    //_getcwd(chBuffer1, sizeof(chBuffer1));
+    char chBuffer1[256] = { 0 };
+    //_getcwd(chBuffer1, sizeof(chBuffer1));
 
-//    sprintf(chBuffer1, /*sizeof(chBuffer1), */"%s\\XLWLog\\%04d-%02d-%02d\\",
-//        m_chCurrentPath,
-//        stimeNow.wYear,
-//        stimeNow.wMonth,
-//        stimeNow.wDay);
-//    Tool_MakeDir(chBuffer1);
+    sprintf(chBuffer1, /*sizeof(chBuffer1), */"%s\\XLWLog\\%04d-%02d-%02d\\",
+        m_chCurrentPath,
+        stimeNow.wYear,
+        stimeNow.wMonth,
+        stimeNow.wDay);
+    Tool_MakeDir(chBuffer1);
 
-//    char chLogFileName[512] = { 0 };
-//    sprintf(chLogFileName, /*sizeof(chLogFileName),*/ "%s/Video_%d-%02d_%02d_%02d_%02dm.log",
-//        chBuffer1,
-//        stimeNow.wYear,
-//        stimeNow.wMonth,
-//        stimeNow.wDay,
-//        stimeNow.wHour,
-//        stimeNow.wMinute/10);
+    char chLogFileName[512] = { 0 };
+    sprintf(chLogFileName, /*sizeof(chLogFileName),*/ "%s/Video_%d-%02d_%02d_%02d_%02dm.log",
+        chBuffer1,
+        stimeNow.wYear,
+        stimeNow.wMonth,
+        stimeNow.wDay,
+        stimeNow.wHour,
+        stimeNow.wMinute/10);
 
-//    FILE *file = NULL;
-//    file = fopen(chLogFileName, "a+");
-//    //fopen_s(&file, chLogFileName, "a+");
-//    if (file)
-//    {
-//        //fprintf(file, "[%04d-%02d-%02d %02d:%02d:%02d:%03lld] : %s\n",
-//        //    stimeNow.tm_year + 1900,
-//        //    stimeNow.tm_mon + 1,
-//        //    stimeNow.tm_mday,
-//        //    stimeNow.tm_hour,
-//        //    stimeNow.tm_min,
-//        //    stimeNow.tm_sec,
-//        //    iTimeInMilliseconds % 1000,
-//        //    g_szString);
+    FILE *file = NULL;
+    file = fopen(chLogFileName, "a+");
+    //fopen_s(&file, chLogFileName, "a+");
+    if (file)
+    {
+        //fprintf(file, "[%04d-%02d-%02d %02d:%02d:%02d:%03lld] : %s\n",
+        //    stimeNow.tm_year + 1900,
+        //    stimeNow.tm_mon + 1,
+        //    stimeNow.tm_mday,
+        //    stimeNow.tm_hour,
+        //    stimeNow.tm_min,
+        //    stimeNow.tm_sec,
+        //    iTimeInMilliseconds % 1000,
+        //    g_szString);
 
-//        fprintf(file, "[%04d-%02d-%02d %02d:%02d:%02d:%03d] [threadID: %lu] : %s\n",
-//            stimeNow.wYear,
-//            stimeNow.wMonth,
-//            stimeNow.wDay,
-//            stimeNow.wHour,
-//            stimeNow.wMinute,
-//            stimeNow.wSecond,
-//            stimeNow.wMilliseconds,
-//                GetCurrentThreadId(),
-//            g_szString);
+        fprintf(file, "[%04d-%02d-%02d %02d:%02d:%02d:%03d] [threadID: %lu] : %s\n",
+            stimeNow.wYear,
+            stimeNow.wMonth,
+            stimeNow.wDay,
+            stimeNow.wHour,
+            stimeNow.wMinute,
+            stimeNow.wSecond,
+            stimeNow.wMilliseconds,
+                GetCurrentThreadId(),
+				m_chLogBuf);
 
-//        fclose(file);
-//        file = NULL;
-//    }
+        fclose(file);
+        file = NULL;
+    }
 }
 
 void MyH264Saver::InitLogerConfig()
@@ -967,29 +999,29 @@ void MyH264Saver::InitLogerConfig()
     //ILog4zManager::getRef().setLoggerPath(LOG4Z_MAIN_LOGGER_ID, "./XLWLog/");
     //ILog4zManager::getRef().setLoggerMonthdir(LOG4Z_MAIN_LOGGER_ID, true);
 
-    srand((int)GetTickCount());
-    unsigned int iLogID = rand();
+    //srand((int)GetTickCount());
+    //unsigned int iLogID = rand();
 
-    char chLogerName[256] = {0};
-    sprintf(chLogerName, "videoFrame_%lu", iLogID);
+    //char chLogerName[256] = {0};
+    //sprintf(chLogerName, "videoFrame_%lu", iLogID);
 
-    m_iFrameLogID = ILog4zManager::getRef().createLogger(chLogerName);
-    ILog4zManager::getRef().setLoggerDisplay(m_iFrameLogID, false);
-    ILog4zManager::getRef().setLoggerLevel(m_iFrameLogID, LOG_LEVEL_DEBUG);
-    ILog4zManager::getRef().setLoggerMonthdir(m_iFrameLogID, true);
-    ILog4zManager::getRef().setLoggerPath(m_iFrameLogID, "./XLWLog/");
-    ILog4zManager::getRef().setLoggerName(m_iFrameLogID, chLogerName);
-    ILog4zManager::getRef().setLoggerOutFile(m_iFrameLogID, true);
+    //m_iFrameLogID = ILog4zManager::getRef().createLogger(chLogerName);
+    //ILog4zManager::getRef().setLoggerDisplay(m_iFrameLogID, false);
+    //ILog4zManager::getRef().setLoggerLevel(m_iFrameLogID, LOG_LEVEL_DEBUG);
+    //ILog4zManager::getRef().setLoggerMonthdir(m_iFrameLogID, true);
+    //ILog4zManager::getRef().setLoggerPath(m_iFrameLogID, "./XLWLog/");
+    //ILog4zManager::getRef().setLoggerName(m_iFrameLogID, chLogerName);
+    //ILog4zManager::getRef().setLoggerOutFile(m_iFrameLogID, true);
 
-    memset(chLogerName, '\0', sizeof(chLogerName));
-    sprintf(chLogerName, "videoSave_%lu", iLogID);
-    m_iVideoLogID = ILog4zManager::getRef().createLogger(chLogerName);
-    ILog4zManager::getRef().setLoggerDisplay(m_iVideoLogID, false);
-    ILog4zManager::getRef().setLoggerLevel(m_iVideoLogID, LOG_LEVEL_DEBUG);
-    ILog4zManager::getRef().setLoggerMonthdir(m_iVideoLogID, true);
-    ILog4zManager::getRef().setLoggerPath(m_iVideoLogID, "./XLWLog/");
-    ILog4zManager::getRef().setLoggerName(m_iVideoLogID, chLogerName);
-    ILog4zManager::getRef().setLoggerOutFile(m_iVideoLogID, true);
+    //memset(chLogerName, '\0', sizeof(chLogerName));
+    //sprintf(chLogerName, "videoSave_%lu", iLogID);
+    //m_iVideoLogID = ILog4zManager::getRef().createLogger(chLogerName);
+    //ILog4zManager::getRef().setLoggerDisplay(m_iVideoLogID, false);
+    //ILog4zManager::getRef().setLoggerLevel(m_iVideoLogID, LOG_LEVEL_DEBUG);
+    //ILog4zManager::getRef().setLoggerMonthdir(m_iVideoLogID, true);
+    //ILog4zManager::getRef().setLoggerPath(m_iVideoLogID, "./XLWLog/");
+    //ILog4zManager::getRef().setLoggerName(m_iVideoLogID, chLogerName);
+    //ILog4zManager::getRef().setLoggerOutFile(m_iVideoLogID, true);
 
     //ILog4zManager::getRef().start();
 }
