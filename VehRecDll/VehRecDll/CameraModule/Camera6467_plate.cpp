@@ -52,7 +52,6 @@ g_func_ResultCallback(NULL),
 m_CameraResult(NULL),
 m_BufferResult(NULL),
 m_bResultComplete(false),
-m_bJpegComplete(false),
 m_bSaveToBuffer(false),
 m_bOverlay(false),
 m_bCompress(false),
@@ -90,7 +89,6 @@ g_func_ResultCallback(NULL),
 m_CameraResult(NULL),
 m_BufferResult(NULL),
 m_bResultComplete(false),
-m_bJpegComplete(false),
 m_bSaveToBuffer(false),
 m_bOverlay(false),
 m_bCompress(false),
@@ -105,8 +103,6 @@ m_hStatusCheckThread(NULL),
 {
     memset(m_chResultPath, '\0', sizeof(m_chResultPath));
     ReadConfig();
-
-    InitializeCriticalSection(&m_csResult);
 
     m_hStatusCheckThread = (HANDLE)_beginthreadex(NULL, 0, Camera_StatusCheckThread, this, 0, NULL);
 }
@@ -134,8 +130,6 @@ Camera6467_plate::~Camera6467_plate()
     SAFE_DELETE_ARRAY(m_pTempBig1);
     SAFE_DELETE_ARRAY(m_pCaptureImg);
     SAFE_DELETE_ARRAY(m_pTempBig);
-
-    DeleteCriticalSection(&m_csResult);
 }
 
 void Camera6467_plate::AnalysisAppendXML(CameraResult* CamResult)
@@ -917,49 +911,6 @@ void Camera6467_plate::SetReConnectCallback(void* funcReco, void* pUser)
     g_func_ReconnectCallback = funcReco;
     g_pUser = pUser;
     LeaveCriticalSection(&m_csFuncCallback);
-}
-
-bool Camera6467_plate::GetOneJpegImg(CameraIMG &destImg)
-{
-    WriteLog("GetOneJpegImg::begin.");
-    bool bRet = false;
-
-    if (!destImg.pbImgData)
-    {
-        WriteLog("GetOneJpegImg:: allocate memory.");
-        destImg.pbImgData = new unsigned char[MAX_IMG_SIZE];
-        memset(destImg.pbImgData, 0, MAX_IMG_SIZE);
-        WriteLog("GetOneJpegImg:: allocate memory success.");
-    }
-
-    EnterCriticalSection(&m_csResult);
-    if (m_bJpegComplete)
-    {
-        if (destImg.pbImgData)
-        {
-            memset(destImg.pbImgData, 0, MAX_IMG_SIZE);
-            memcpy(destImg.pbImgData, m_CIMG_StreamJPEG.pbImgData, m_CIMG_StreamJPEG.dwImgSize);
-
-            destImg.dwImgSize = m_CIMG_StreamJPEG.dwImgSize;
-            destImg.wImgHeight = m_CIMG_StreamJPEG.wImgHeight;
-            destImg.wImgWidth = m_CIMG_StreamJPEG.wImgWidth;
-            bRet = true;
-            WriteLog("GetOneJpegImg success.");
-            m_bJpegComplete = false;
-        }
-        else
-        {
-            WriteLog("GetOneJpegImg:: allocate memory failed.");
-        }
-    }
-    else
-    {
-        WriteLog("GetOneJpegImg the image is not ready.");
-    }
-    LeaveCriticalSection(&m_csResult);
-    WriteLog("GetOneJpegImg:: end.");
-
-    return bRet;
 }
 
 void Camera6467_plate::SendConnetStateMsg(bool isConnect)

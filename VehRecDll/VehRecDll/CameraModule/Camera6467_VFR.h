@@ -72,6 +72,18 @@ public:
     size_t GetResultListSize();
     void TryWaitCondition();
 
+	void ReceiveVideoFileName(const char* videoFileName);
+	bool CheckIfFileNameIntheVideoList(const char* fileName);
+	static void ReceiveVideoFileNameCallback(void* userData, const char* fileName)
+	{
+		if (NULL == userData)
+		{
+			return;
+		}
+		Camera6467_VFR* pCamera = (Camera6467_VFR*)userData;
+		pCamera->ReceiveVideoFileName(fileName);
+	}
+
 public:
 
     virtual int RecordInfoBegin(DWORD dwCarID);
@@ -196,7 +208,6 @@ private:
     void* m_hMsgHanldle;
     
     bool m_bStatusCheckThreadExit;
-    bool m_bJpegComplete;
     bool m_bLastResultComplete;
 
     HANDLE m_hStatusCheckThread;			//状态检测线程
@@ -205,9 +216,6 @@ private:
     HANDLE m_hDeleteResultThread;              //结果清除线程
 
     CameraIMG m_Small_IMG_Temp;
-    CameraIMG m_CIMG_StreamJPEG;
-
-    CRITICAL_SECTION m_csResult;
 
     std::shared_ptr<Camera6467_plate> m_Camera_Plate;
 
@@ -215,6 +223,7 @@ private:
     ResultListManager m_VfrResultList;
     std::list<SendStatues> StatusList;
     std::list<std::string> m_lsVideoName;
+	std::list<std::string >m_lsCompleteVideoName;
 
     std::shared_ptr<CameraResult> m_pLastResult;
     //CCusSemaphore m_MySemaphore;

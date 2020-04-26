@@ -24,7 +24,7 @@
 #include<ctime>
 #include<atltime.h>
 
-#define DLL_VERSION "2019121101"
+#define DLL_VERSION "2020042401"
 #define INI_FILE_NAME "\\VehRecDll_XLW.ini"
 #define DLL_LOG_NAME "VehRecDll_XLW.log"
 #define  LOG_DIR_NAME "XLWLog"

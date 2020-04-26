@@ -22,6 +22,7 @@
 
 extern char g_chLogPath[256];
 int g_iLogHoldDays = 30;
+CameraIMG g_CIMG_StreamJPEG;
 
 std::list<unsigned long> g_SentCarList;
 bool FuncfindIfSendBefore(std::list<unsigned long>& carIDList, unsigned long carID)
@@ -112,7 +113,7 @@ VEHRECDLL_API int WINAPI VehRec_Connect(char *devIP, char *savepath)
     if (pCamera != NULL)
     {
         int iHandle = DeviceListManager::GetInstance()->GetDeviceIdByIpAddress(devIP);
-        WRITE_LOG("find device %s, ID = %ld", devIP, iHandle);
+        WRITE_LOG("find device %s, ID = %d", devIP, iHandle);
         iRet = iHandle;
     }
     else
@@ -126,13 +127,14 @@ VEHRECDLL_API int WINAPI VehRec_Connect(char *devIP, char *savepath)
                 pCamera->SetLoginID(i + BASIC_NUMBER);
                 pCamera->SetImageDir(savepath);
                 pCamera->SetLogHoldDays(g_iLogHoldDays);
-				pCamera->SetConnectMode(mode_noCallback);
+				pCamera->SetConnectMode(mode_noCallback);				
                 if (strlen(g_chLogPath) > 0)
                 {
                     pCamera->SetLogPath(g_chLogPath);
                 }
                 if (pCamera->ConnectToCamera() == 0)
                 {
+					pCamera->SetJpegStreamCallback();
                     WRITE_LOG("connect to camera success.");
                 }
                 else
@@ -175,7 +177,7 @@ VEHRECDLL_API int WINAPI VehRec_ConnectEX(char *devIP, char *savepath, VehRec_Ca
     if (pCamera != NULL)
     {
         int iHandle = DeviceListManager::GetInstance()->GetDeviceIdByIpAddress(devIP);
-        WRITE_LOG("find device %s, ID = %ld", devIP, iHandle);
+        WRITE_LOG("find device %s, ID = %d", devIP, iHandle);
         iRet = iHandle;
     }
     else
@@ -257,6 +259,7 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
     Tool_MakeFileDir(recfile);
 
     int iRet = -1;
+	bool bGetJpeg = false;
     Camera6467_VFR* pCamera = (Camera6467_VFR*)DeviceListManager::GetInstance()->GetDeviceById(handle - BASIC_NUMBER);
     if (pCamera != NULL)
     {
@@ -266,42 +269,30 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
 			return -1;
 		}
 
+		for (int i = 0; i < 10; i++)
+		{
+			if (pCamera->GetOneJpegImg(g_CIMG_StreamJPEG))
+			{
+				WRITE_LOG("GetOneJpegImg success, data = %p, length = %lu",
+					g_CIMG_StreamJPEG.pbImgData,
+					g_CIMG_StreamJPEG.dwImgSize);
+				bGetJpeg = true;
+				break;
+			}
+			Sleep(50);
+		}
+
         std::shared_ptr<CameraResult> pTempResult = nullptr;
 
         int iDelayTime = pCamera->getResultWaitTime();
         long iFirstTic= GetTickCount();
-        long iCurrentTic = iFirstTic;
-//        do 
-//        {
-//            iCurrentTic = GetTickCount();
-//           
-//#ifdef USE_LAST_RESULT
-//            //if (pCamera->GetLastResultIfReceiveComplete())
-//            {
-//                pTempResult = pCamera->GetLastResult();
-//            }
-//#else
-//            pTempResult = pCamera->GetFrontResult();
-//#endif            
-//            if (pTempResult
-//                && pCamera->checkIfHasThreePic(pTempResult)
-//                )
-//            {
-//                break;
-//            }
-//        } while (iCurrentTic > (iFirstTic + iDelayTime));
+        long iCurrentTic = iFirstTic;		
 
-        static unsigned long dwLastCarID = 0;
         do
         {
             iCurrentTic = GetTickCount();
             bool bFind = false;
 
-//#ifdef USE_LAST_RESULT
-//            pTempResult = pCamera->GetLastResult();
-//#else
-//            pTempResult = pCamera->GetFrontResult();
-//#endif       
             if (RESULT_MODE_FRONT == pCamera->GetResultMode())
             {
                 pTempResult = pCamera->GetFrontResult();
@@ -316,7 +307,6 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
                 && !FuncfindIfSendBefore(g_SentCarList, pTempResult->dwCarID)
                 )
             {
-                //dwLastCarID = pTempResult->dwCarID;
                 break;
             }
             if (pTempResult
@@ -367,6 +357,7 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
                 && pTempResult->CIMG_BestCapture.dwImgSize <= 0)
             {
                 iErrorMode = 1;
+				WRITE_LOG("iErrorMode  == 1, only have last snapshot, use it to replace tail image. ");
             }
 
             switch (iErrorMode)
@@ -378,9 +369,15 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
                     pSideImageData = pTempResult->CIMG_BestCapture.pbImgData;
                     iSideImageSize = pTempResult->CIMG_BestCapture.dwImgSize;
                 }
-                if (pTempResult->CIMG_LastCapture.dwImgSize > 0)
+				if (bGetJpeg && g_CIMG_StreamJPEG.dwImgSize > 0)
+				{
+					pTailImagePath = NULL;
+					pTailImageData = g_CIMG_StreamJPEG.pbImgData;
+					iTailImageSize = g_CIMG_StreamJPEG.dwImgSize;
+				}
+                else if (pTempResult->CIMG_LastCapture.dwImgSize > 0)
                 {
-                    pTailImagePath = pTempResult->CIMG_LastCapture.chSavePath;
+					pTailImagePath = pTempResult->CIMG_LastCapture.chSavePath;
                     pTailImageData = pTempResult->CIMG_LastCapture.pbImgData;
                     iTailImageSize = pTempResult->CIMG_LastCapture.dwImgSize;
                 }
@@ -406,8 +403,8 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
             }
 
             BOOL bRet = FALSE;
-            if (NULL != pSideImagePath
-                && strlen(pSideImagePath) > 0)
+			if (NULL != pSideImageData
+				&& iSideImageSize > 0)
             {
                 if (strlen(colpic) > 0)
                 {
@@ -430,8 +427,8 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
                 WRITE_LOG("side image is not ready.");
             }
             
-            if (NULL != pTailImagePath
-                && strlen(pTailImagePath) > 0)
+			if (NULL != pTailImageData
+				&& iTailImageSize > 0)
             {
                 if (strlen(platepic) > 0)
                 {
@@ -461,13 +458,17 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
             {
                 if (strlen(recfile) > 0)
                 {
-                    //rename(pVideoPath, recfile);
+					if (!pCamera->CheckIfFileNameIntheVideoList(pVideoPath))
+					{
+						WRITE_LOG("video name %s  is not complete.", pVideoPath);
+					}
                     bRet = FALSE;
                     bRet = CopyFile(pVideoPath, recfile, FALSE);
                     WRITE_LOG("get recfile finish = %s, operation code = %d, getlast error = %s",
                         recfile,
                         bRet,
                         bRet ? "NULL" : Tool_GetLastErrorAsString().c_str());
+
 					if (bRet
 						&& 0 == remove(pVideoPath))
 					{
@@ -484,46 +485,6 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
                 WRITE_LOG("video is not ready.");
             }
 
-            //if (pTempResult->CIMG_BestCapture.dwImgSize > 0
-            //    && strlen(pTempResult->CIMG_BestCapture.chSavePath) > 0)
-            //{                
-            //    if (strlen(colpic) > 0)
-            //    {
-            //        rename(pTempResult->CIMG_BestCapture.chSavePath, colpic);
-            //    }
-            //    else
-            //    {
-            //        sprintf(colpic, "%s", pTempResult->CIMG_BestCapture.chSavePath);
-            //    }
-            //}
-            //WRITE_LOG("get colpic finish = %s", colpic);
-
-            //if (pTempResult->CIMG_LastCapture.dwImgSize > 0
-            //    && strlen(pTempResult->CIMG_LastCapture.chSavePath) > 0)
-            //{                
-            //    if (strlen(platepic) > 0)
-            //    {
-            //        rename(pTempResult->CIMG_LastCapture.chSavePath, platepic);
-            //    }
-            //    else
-            //    {
-            //        sprintf(platepic, "%s", pTempResult->CIMG_LastCapture.chSavePath);
-            //    }
-            //}
-            //WRITE_LOG("get platepic finish = %s", platepic);
-
-            //if (strlen(pTempResult->chSaveFileName) > 0)
-            //{                
-            //    if (strlen(recfile) > 0)
-            //    {
-            //        rename(pTempResult->chSaveFileName, recfile);
-            //    }
-            //    else
-            //    {
-            //        sprintf(recfile, "%s", pTempResult->chSaveFileName);
-            //    }
-            //}
-            //WRITE_LOG("get recfile finish = %s", recfile);
             if (RESULT_MODE_FRONT == pCamera->GetResultMode())
             {
 				WRITE_LOG("ResultMode == RESULT_MODE_FRONT, DeleteFrontResult");

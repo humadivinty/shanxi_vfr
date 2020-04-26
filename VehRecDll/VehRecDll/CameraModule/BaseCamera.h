@@ -155,16 +155,14 @@ public:
     void WriteFormatLog(const char* szfmt, ...);
     bool WriteLog(const char* chlog);
 
+	#define WRITE_LOG_FMT(fmt, ...) WriteFormatLog("%s:: "fmt, __FUNCTION__, ##__VA_ARGS__);
+
     bool TakeCapture();
     bool SynTime();
     bool SynTime(int Year, int Month, int Day, int Hour, int Minute, int Second, int MilientSecond);
-    bool SaveImgToDisk(char* chImgPath, BYTE* pImgData, DWORD dwImgSize);
-    bool SaveImgToDisk(char* chImgPath, BYTE* pImgData, DWORD dwImgSize, int iWidth, int iHeight, int iType = 0);
 
     void SetConnectMsg(UINT iConMsg, UINT iDsiConMsg);
     void SaveResultToBufferPath(CameraResult* pResult);
-
-    //void CompressImg(CameraIMG& camImg, DWORD requireSize);
 
     void SendMessageToPlateServer(int iMessageType = 1);
     //向设备发送特定命令，只对中海小黄人对接有效
@@ -187,6 +185,8 @@ public:
     bool SetH264CallbackNULL(int iStreamID, DWORD RecvFlag);
 
     bool SetJpegStreamCallback();
+	bool UnSetJpegStreamCallback();
+	bool GetOneJpegImg(CameraIMG &destImg);
 
     bool StartToSaveAviFile(int iStreamID, const char* fileName, DWORD64 beginTimeTick = 0);
     bool StopSaveAviFile(int iStreamID, INT64 TimeFlag = 0);
@@ -233,12 +233,14 @@ protected:
     int m_iResultHoldDay;
 
 	int m_iConnectMode;
+	INT32 m_iJpegCount;
 
 	DWORD64 m_curH264Ms;
     bool m_bLogEnable;
 	bool m_bVideoLogEnable;
     bool m_bSynTime;
     bool m_bFirstH264Frame;
+	bool m_bJpegComplete;
 
     char m_chDeviceID[3];
     char m_chStationID[7];
@@ -256,7 +258,9 @@ protected:
     SaveModeInfo m_SaveModelInfo;
 
     CRITICAL_SECTION m_csLog;    
+	CRITICAL_SECTION m_csResult;
     MyH264Saver m_h264Saver;
+	CameraIMG m_CIMG_StreamJPEG;
 
     void ReadHistoryInfo();
     void WriteHistoryInfo(SaveModeInfo& SaveInfo);

@@ -47,7 +47,6 @@ g_pResultUserData(NULL),
 m_hMsgHanldle(NULL),
 m_pResult(NULL),
 m_bStatusCheckThreadExit(false),
-m_bJpegComplete(false),
 m_hStatusCheckThread(NULL),
 m_hSendResultThread(NULL),
 m_hDeleteLogThread(NULL),
@@ -58,7 +57,7 @@ m_hDeleteResultThread(NULL)
 	m_h264Saver.initMode(1);
 
     m_hStatusCheckThread = (HANDLE)_beginthreadex(NULL, 0, Camera_StatusCheckThread, this, 0, NULL);
-    m_hSendResultThread = (HANDLE)_beginthreadex(NULL, 0, s_SendResultThreadFunc, this, 0, NULL);
+    //m_hSendResultThread = (HANDLE)_beginthreadex(NULL, 0, s_SendResultThreadFunc, this, 0, NULL);
 	//m_hDeleteLogThread = (HANDLE)_beginthreadex(NULL, 0, s_DeleteLogThreadFunc, this, 0, NULL);
 	//m_hDeleteResultThread = (HANDLE)_beginthreadex(NULL, 0, s_DeleteResultThreadFunc, this, 0, NULL);
 }
@@ -81,17 +80,17 @@ g_pResultUserData(NULL),
 m_hMsgHanldle(hWnd),
 m_pResult(NULL),
 m_bStatusCheckThreadExit(false),
-m_bJpegComplete(false),
 m_hStatusCheckThread(NULL),
 m_hSendResultThread(NULL),
 m_hDeleteLogThread(NULL),
 m_hDeleteResultThread(NULL)
 {
-    InitializeCriticalSection(&m_csResult);
     ReadConfig();
+	m_h264Saver.SetFileNameCallback(this, ReceiveVideoFileNameCallback);
+	m_h264Saver.initMode(1);
 
     m_hStatusCheckThread = (HANDLE)_beginthreadex(NULL, 0, Camera_StatusCheckThread, this, 0, NULL);
-    m_hSendResultThread = (HANDLE)_beginthreadex(NULL, 0, s_SendResultThreadFunc, this, 0, NULL);
+    //m_hSendResultThread = (HANDLE)_beginthreadex(NULL, 0, s_SendResultThreadFunc, this, 0, NULL);
 	//m_hDeleteLogThread = (HANDLE)_beginthreadex(NULL, 0, s_DeleteLogThreadFunc, this, 0, NULL);
 	//m_hDeleteResultThread = (HANDLE)_beginthreadex(NULL, 0, s_DeleteResultThreadFunc, this, 0, NULL);
 }
@@ -111,7 +110,6 @@ Camera6467_VFR::~Camera6467_VFR()
     Tool_SafeCloseThread(m_hDeleteResultThread);
 
     SAFE_DELETE_OBJ(m_pResult);
-    DeleteCriticalSection(&m_csResult);
 }
 
 void Camera6467_VFR::AnalysisAppendXML(CameraResult* CamResult)
@@ -579,7 +577,7 @@ void Camera6467_VFR::ReadConfig()
     //SetReulstHoldDay(iTempValue);
 
     //值为1时，表示使用最早接收到的结果，
-    iTempValue = 1;
+    iTempValue = 0;
     Tool_ReadIntValueFromConfigFile(INI_FILE_NAME, "Result", "GetMode", iTempValue);
     m_iResultModule = iTempValue > 0 ? iTempValue : 0;
 
@@ -1147,6 +1145,34 @@ size_t Camera6467_VFR::GetResultListSize()
 void Camera6467_VFR::TryWaitCondition()
 {
     //m_MySemaphore.tryDecrease(GetCurrentThreadId());
+}
+
+void Camera6467_VFR::ReceiveVideoFileName(const char* videoFileName)
+{
+	EnterCriticalSection(&m_csFuncCallback);
+	if (NULL != videoFileName
+		&& std::end(m_lsCompleteVideoName) != std::find(std::begin(m_lsCompleteVideoName), std::end(m_lsCompleteVideoName), videoFileName))
+	{
+		if (m_lsCompleteVideoName.size() >= 3)
+		{
+			m_lsCompleteVideoName.pop_front();
+		}
+		m_lsCompleteVideoName.push_back(videoFileName);
+	}
+	LeaveCriticalSection(&m_csFuncCallback);
+}
+
+bool Camera6467_VFR::CheckIfFileNameIntheVideoList(const char* fileName)
+{
+	bool bFind = false;
+	EnterCriticalSection(&m_csFuncCallback);
+	if (NULL != fileName
+		&& std::end(m_lsCompleteVideoName) != std::find(std::begin(m_lsCompleteVideoName), std::end(m_lsCompleteVideoName), fileName))
+	{
+		bFind = true;
+	}
+	LeaveCriticalSection(&m_csFuncCallback);
+	return bFind;
 }
 
 int Camera6467_VFR::RecordInfoBegin(DWORD dwCarID)
@@ -1816,15 +1842,18 @@ int Camera6467_VFR::DeviceJPEGStream(PBYTE pbImageData,
     DWORD dwImageType, 
     LPCSTR szImageExtInfo)
 {
-    static int iCout = 0;
-    if (iCout++ > 100)
+    if (m_iJpegCount++ > 100)
     {
-        WriteFormatLog("DeviceJPEGStream, pbImageData = %p, plateNo = %s, dwImageDataLen= %lu, dwImageType= %lu",
+		WRITE_LOG_FMT("pbImageData = %p,  dwImageDataLen= %lu, dwImageType= %lu",
             pbImageData,
             dwImageDataLen,
             dwImageType);
 
-        iCout = 0;
+		m_iJpegCount = 0;
+
+		//char chFileName[256] = {0};
+		//_snprintf(chFileName, sizeof(chFileName), "%lu.jpg", GetTickCount());
+		//Tool_SaveFileToPath(chFileName, pbImageData, dwImageDataLen);
     }
 
     EnterCriticalSection(&m_csResult);
@@ -1862,7 +1891,8 @@ void Camera6467_VFR::CheckStatus()
         int iTimeInterval = GetTimeInterval();
         if ((iCurrentTick - iLastTick) >= (iTimeInterval * 1000))
         {
-            int iStatus = GetCamStatus();
+            //int iStatus = GetCamStatus();
+			int iStatus = GetNetSatus();
             if (iStatus != iLastStatus)
             {
                 if (iStatus == 0)
@@ -1895,17 +1925,23 @@ void Camera6467_VFR::CheckStatus()
 
 bool Camera6467_VFR::checkIfHasThreePic(std::shared_ptr<CameraResult> result)
 {
-    if ( result->CIMG_BestCapture.dwImgSize > 0
-        && result->CIMG_LastCapture.dwImgSize > 0)
-    {
-        return true;
-    }
+	if (result->CIMG_BestCapture.dwImgSize > 0 
+		&& CheckIfFileNameIntheVideoList(result->chSaveFileName))
+	{
+		return true;
+	}
 
-    if (result->CIMG_LastSnapshot.dwImgSize > 0/*
-        && result->CIMG_BestCapture.dwImgSize <= 0*/)
-    {
-        return true;
-    }
+    //if ( result->CIMG_BestCapture.dwImgSize > 0
+    //    && result->CIMG_LastCapture.dwImgSize > 0)
+    //{
+    //    return true;
+    //}
+
+    //if (result->CIMG_LastSnapshot.dwImgSize > 0/*
+    //    && result->CIMG_BestCapture.dwImgSize <= 0*/)
+    //{
+    //    return true;
+    //}
 
     //if (result->CIMG_BeginCapture.dwImgSize > 0
     //    && result->CIMG_BestCapture.dwImgSize > 0

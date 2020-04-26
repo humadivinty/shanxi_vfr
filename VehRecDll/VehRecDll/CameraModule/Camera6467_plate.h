@@ -71,7 +71,6 @@ private:
     DWORD m_dwLastCarID;
 
     bool m_bResultComplete;
-    bool m_bJpegComplete;
     bool m_bSaveToBuffer;
     bool m_bOverlay;
     bool m_bCompress;
@@ -90,10 +89,6 @@ private:
     ResultListManager m_lsResultList;
     void* m_pExternalDataSource;
 
-
-    CameraIMG m_CIMG_StreamJPEG;
-
-    CRITICAL_SECTION m_csResult;
     CameraIMG m_Bin_IMG_Temp;
     CameraIMG m_Small_IMG_Temp;
 

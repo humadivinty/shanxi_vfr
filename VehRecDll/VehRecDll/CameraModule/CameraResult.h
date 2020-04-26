@@ -106,8 +106,8 @@ public:
     float fConfidenceLevel;     //©ипе╤х
 
     UINT64 dw64TimeMS;
-    DWORD dwReceiveTime;
-	UINT32 dwCarID;
+	ULONG dwReceiveTime;
+	ULONG dwCarID;
     INT32 iDeviceID;
     INT32 iPlateColor;
     INT32 iPlateTypeNo;

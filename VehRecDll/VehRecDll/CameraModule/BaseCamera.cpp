@@ -1,15 +1,10 @@
 #include "stdafx.h"
 #include <WinSock2.h>
-#include "BaseCamera.h"
-//#include "HvDevice/HvDeviceBaseType.h"
-//#include "HvDevice/HvDeviceCommDef.h"
-//#include "HvDevice/HvDeviceNew.h"
-#include "tinyxml/tinyxml.h"
 #include<math.h>
 #include<shellapi.h>
 #include <Dbghelp.h>
-//#pragma comment(lib, "./lib/hvdevice/HvDevice.lib")
-//注意：这里要把HvDeviceDLL.h 里面的 #include "HvDeviceUtils.h" 注释掉,否则无法编译通过
+#include "BaseCamera.h"
+#include "tinyxml/tinyxml.h"
 #include "HvDevice/HvDeviceBaseType.h"
 #include "HvDevice/HvDeviceCommDef.h"
 #include "HvDevice/HvDeviceNew.h"
@@ -17,12 +12,8 @@
 #pragma comment(lib, "HvDevice/HvDevice.lib")
 #define  VEHICLE_LISTEN_PORT 99999
 
-//#pragma comment(lib,"WS2_32.lib")
-//#pragma comment(lib, "H264API/H264.lib")
 #include "utilityTool/ToolFunction.h"
 #include<ctime>
-//#include<atltime.h>
-
 
 #define  BUFFERLENTH 256
 
@@ -39,10 +30,12 @@ m_iDirection(0),
 m_iIndex(0),
 m_iVideoDelayTime(2),
 m_iLogHoldDay(30),
+m_iJpegCount(0),
 m_bLogEnable(true),
 m_bVideoLogEnable(false),
 m_bSynTime(true),
   m_bFirstH264Frame(true),
+  m_bJpegComplete(false),
 m_strIP("")
 {
     //合成图片初始化
@@ -52,7 +45,7 @@ m_strIP("")
     InitializeCriticalSection(&m_csFuncCallback);
 
     memset(m_chLogPath, '\0', sizeof(m_chLogPath));
-    ReadConfig();
+    //ReadConfig();
     m_h264Saver.SetLogEnable(m_bVideoLogEnable);
 }
 
@@ -69,20 +62,23 @@ m_iDirection(0),
 m_iIndex(0),
 m_iVideoDelayTime(2),
 m_iLogHoldDay(30),
+m_iJpegCount(0),
 m_bLogEnable(true),
 m_bVideoLogEnable(false),
 m_bSynTime(true),
   m_bFirstH264Frame(true),
+  m_bJpegComplete(false),
 m_strIP(chIP)
 {
     InitializeCriticalSection(&m_csLog);
     InitializeCriticalSection(&m_csFuncCallback);
+	InitializeCriticalSection(&m_csResult);
     //合成图片初始化
 //    Tool_GetEncoderClsid(L"image/jpeg", &m_jpgClsid);
 //    Tool_GetEncoderClsid(L"image/bmp", &m_bmpClsid);
     memset(m_chLogPath, '\0', sizeof(m_chLogPath));
 
-    ReadConfig();
+    //ReadConfig();
     m_h264Saver.SetLogEnable(m_bVideoLogEnable);
 }
 
@@ -96,6 +92,7 @@ BaseCamera::~BaseCamera()
     WriteLog("finish delete Camera");
     DeleteCriticalSection(&m_csLog);
     DeleteCriticalSection(&m_csFuncCallback);
+	DeleteCriticalSection(&m_csResult);
 }
 
 void BaseCamera::ReadHistoryInfo()
@@ -199,223 +196,6 @@ int BaseCamera::handleH264Frame(DWORD dwVedioFlag,
         return 0;
 }
 
-bool BaseCamera::SaveImgToDisk(char* chImgPath, BYTE* pImgData, DWORD dwImgSize)
-{
-    WriteLog("begin SaveImgToDisk");
-    if (NULL == pImgData || NULL == chImgPath)
-    {
-        WriteLog("SaveImgToDisk, failed.NULL == pImgData || NULL == chImgPath");
-        return false;
-    }
-    char chLogBuff[MAX_PATH] = { 0 };
-    bool bRet = false;
-
-    if (NULL != strstr(chImgPath, "\\") || NULL != strstr(chImgPath, "/"))
-    {
-        std::string tempFile(chImgPath);
-        size_t iPosition = std::string::npos;
-        if (NULL != strstr(chImgPath, "\\"))
-        {
-            iPosition = tempFile.rfind("\\");
-        }
-        else
-        {
-            iPosition = tempFile.rfind("/");
-        }
-        std::string tempDir = tempFile.substr(0, iPosition + 1);
-        if (!MakeSureDirectoryPathExists(tempDir.c_str()))
-        {
-            memset(chLogBuff, '\0', sizeof(chLogBuff));
-            //sprintf_s(chLogBuff, "%s save failed", chImgPath);
-            sprintf_s(chLogBuff, sizeof(chLogBuff), "%s save failed, create path failed.", chImgPath);
-            WriteLog(chLogBuff);
-            return false;
-        }
-    }
-
-    size_t iWritedSpecialSize = 0;
-    FILE* fp = NULL;
-    //fp = fopen(chImgPath, "wb+");
-    errno_t errCode;
-    _set_errno(0);
-    errCode = fopen_s(&fp, chImgPath, "wb+");
-    if (fp)
-    {
-        //iWritedSpecialSize = fwrite(pImgData, dwImgSize , 1, fp);
-        iWritedSpecialSize = fwrite(pImgData, sizeof(BYTE), dwImgSize, fp);
-        fflush(fp);
-        fclose(fp);
-        fp = NULL;
-        bRet = true;
-    }
-    else
-    {
-        memset(chLogBuff, '\0', sizeof(chLogBuff));
-        //sprintf_s(chLogBuff, "%s save failed", chImgPath);
-        sprintf_s(chLogBuff, sizeof(chLogBuff), "%s open failed, error code = %d", chImgPath, errCode);
-        WriteLog(chLogBuff);
-    }
-    if (iWritedSpecialSize == dwImgSize)
-    {
-        memset(chLogBuff, '\0', sizeof(chLogBuff));
-        //sprintf_s(chLogBuff, "%s save success", chImgPath);
-        sprintf_s(chLogBuff, sizeof(chLogBuff), "%s save success", chImgPath);
-        WriteLog(chLogBuff);
-    }
-    else
-    {
-        memset(chLogBuff, '\0', sizeof(chLogBuff));
-        //sprintf_s(chLogBuff, "%s save success", chImgPath);
-        _get_errno(&errCode);
-        sprintf_s(chLogBuff, sizeof(chLogBuff), "%s write no match, size = %lu, write size = %lu, error code = %d.",
-            chImgPath,
-            dwImgSize,
-            iWritedSpecialSize,
-            errCode);
-        WriteLog(chLogBuff);
-    }
-
-    WriteLog("end SaveImgToDisk");
-    return bRet;
-}
-
-#ifdef USMSVC
-bool BaseCamera::SaveImgToDisk(char* chImgPath, BYTE* pImgData, DWORD dwImgSize, int iWidth, int iHeight, int iType /*= 0*/)
-{
-    //iType 为0时压缩图像，1时不压缩
-    if (pImgData == NULL || dwImgSize < 0 || iWidth < 0 || iHeight < 0)
-    {
-        return false;
-    }
-    IStream* pStream = NULL;
-    CreateStreamOnHGlobal(NULL, TRUE, &pStream);
-    if (NULL == pStream)
-    {
-        WriteLog("SaveImgToDisk:: Stream 流创建失败. reture false");
-        return false;		//流创建失败
-    }
-    LARGE_INTEGER LiTemp = { 0 };
-    ULARGE_INTEGER ULiZero = { 0 };
-    ULONG ulRealSize = 0;
-    pStream->Seek(LiTemp, STREAM_SEEK_SET, NULL);
-    pStream->SetSize(ULiZero);
-
-    //将图片写入流中
-    pStream->Write(pImgData, dwImgSize, &ulRealSize);
-    //创建位图
-    Bitmap bmpSrc(pStream);
-
-    Bitmap bmpDest(iWidth, iHeight);
-    Graphics grCompress(&bmpDest);
-    Rect RCompress(0, 0, iWidth, iHeight);
-    Status statuDraw = grCompress.DrawImage(&bmpSrc, RCompress, 0, 0, bmpSrc.GetWidth(), bmpSrc.GetHeight(), UnitPixel);
-    if (statuDraw != Ok)
-    {
-        char chLog[260] = { 0 };
-        sprintf_s(chLog, sizeof(chLog), "SaveImgToDisk:: DrawImage failed, the error code = %d", statuDraw);
-        WriteLog(chLog);
-
-        if (pStream)
-        {
-            pStream->Release();
-            pStream = NULL;
-        }
-        return false;
-    }
-    Status statusDest;
-    bool bRet = false;
-    if (iType == 0)
-    {
-        ULONG quality = 50;
-        EncoderParameters encoderParameters;
-        encoderParameters.Count = 1;
-        encoderParameters.Parameter[0].Guid = EncoderQuality;
-        encoderParameters.Parameter[0].Type = EncoderParameterValueTypeLong;
-        encoderParameters.Parameter[0].NumberOfValues = 1;
-
-        pStream->Seek(LiTemp, STREAM_SEEK_SET, NULL);
-        pStream->SetSize(ULiZero);
-        encoderParameters.Parameter[0].Value = &quality;
-        statusDest = bmpDest.Save(pStream, &m_jpgClsid, &encoderParameters);
-        if (statusDest != Ok)
-        {
-            char chLog[260] = { 0 };
-            //sprintf_s(chLog, "SaveImgToDisk:: failed, the error code = %d", statusDest);
-            sprintf_s(chLog, sizeof(chLog), "SaveImgToDisk:: failed, the error code = %d", statusDest);
-            WriteLog(chLog);
-
-            if (pStream)
-            {
-                pStream->Release();
-                pStream = NULL;
-            }
-            return false;
-        }
-
-        ULARGE_INTEGER uiLength;
-        ULONG iLastSize = 0;
-        if (GetStreamLength(pStream, &uiLength))
-        {
-            iLastSize = (int)uiLength.QuadPart;
-        }
-        BYTE* pDestImg = NULL;
-        if (iLastSize > 0)
-        {
-            pDestImg = new BYTE[iLastSize];
-        }
-        pStream->Seek(LiTemp, STREAM_SEEK_SET, NULL);
-        if (S_OK != pStream->Read(pDestImg, iLastSize, &iLastSize))
-        {
-            WriteLog("压缩图片保存失败");
-
-            if (NULL != pDestImg)
-            {
-                delete[] pDestImg;
-                pDestImg = NULL;
-            }
-            return false;
-        }
-        bRet = SaveImgToDisk(chImgPath, pDestImg, iLastSize);
-        if (NULL != pDestImg)
-        {
-            delete[] pDestImg;
-            pDestImg = NULL;
-        }
-
-        if (pStream)
-        {
-            pStream->Release();
-            pStream = NULL;
-        }
-        return bRet;
-    }
-    else
-    {
-        wchar_t tempPath[260];
-        MultiBYTEToWideChar(CP_ACP, NULL, chImgPath, 260, tempPath, 260);
-        statusDest = bmpDest.Save(tempPath, &m_bmpClsid);
-        if (statusDest == Ok)
-        {
-            bRet = true;
-        }
-        else
-        {
-            char chLog[260] = { 0 };
-            //sprintf_s(chLog, "SaveImgToDisk:: Save failed, the error code = %d", statusDest);
-            sprintf_s(chLog, sizeof(chLog), "SaveImgToDisk:: Save failed, the error code = %d", statusDest);
-            WriteLog(chLog);
-        }
-
-        if (pStream)
-        {
-            pStream->Release();
-            pStream = NULL;
-        }
-    }
-    return bRet;
-}
-#endif
-
 bool BaseCamera::SetCameraInfo(CameraInfo& camInfo)
 {
     m_strIP = std::string(camInfo.chIP);
@@ -484,10 +264,14 @@ int BaseCamera::GetCamStatus()
 
 int BaseCamera::GetNetSatus()
 {
-    if (!m_strIP.empty() && Tool_PingIPaddress(m_strIP.c_str()))
-    {
-        return 0;
-    }
+    //if (!m_strIP.empty() && Tool_PingIPaddress(m_strIP.c_str()))
+    //{
+    //    return 0;
+    //}
+	if (!m_strIP.empty() && 1 != Tool_pingIp_win(m_strIP.c_str()))
+	{
+		return 0;
+	}
     return 1;
 }
 
@@ -565,19 +349,19 @@ int BaseCamera::ConnectToCamera()
         WriteLog("ConnectToCamera:: SetCallBack success.");
     }
 
-    for (int i = 0; i < 3; i++)
-    {
-        Sleep(100);
-        if (!SetH264Callback(1, 0, 0, H264_RECV_FLAG_REALTIME))
-        {
-            WriteLog("ConnectToCamera:: SetH264Callback failed.");
-        }
-        else
-        {
-            WriteLog("ConnectToCamera:: SetH264Callback success.");
-            break;
-        }
-    }
+	for (int i = 0; i < 3; i++)
+	{
+		Sleep(100);
+		if (!SetH264Callback(1, 0, 0, H264_RECV_FLAG_REALTIME))
+		{
+			WriteLog("ConnectToCamera:: SetH264Callback failed.");
+		}
+		else
+		{
+			WriteLog("ConnectToCamera:: SetH264Callback success.");
+			break;
+		}
+	}
     iRet = 0;
     return iRet;
 }
@@ -680,7 +464,7 @@ void BaseCamera::WriteFormatLog(const char* szfmt, ...)
 
 bool BaseCamera::WriteLog(const char* chlog)
 {
-    ReadConfig();
+    //ReadConfig();
     if (!m_bLogEnable || NULL == chlog)
         return false;
 
@@ -1155,28 +939,28 @@ void BaseCamera::SaveResultToBufferPath(CameraResult* pResult)
 
     if (pResult->CIMG_BinImage.pbImgData)
     {
-        SaveImgToDisk(pResult->CIMG_BinImage.chSavePath,
+        Tool_SaveFileToPath(pResult->CIMG_BinImage.chSavePath,
             pResult->CIMG_BinImage.pbImgData,
             pResult->CIMG_BinImage.dwImgSize);
     }
 
     if (pResult->CIMG_PlateImage.pbImgData)
     {
-        SaveImgToDisk(pResult->CIMG_PlateImage.chSavePath,
+		Tool_SaveFileToPath(pResult->CIMG_PlateImage.chSavePath,
             pResult->CIMG_PlateImage.pbImgData,
             pResult->CIMG_PlateImage.dwImgSize);
     }
 
     if (pResult->CIMG_BeginCapture.pbImgData)
     {
-        SaveImgToDisk(pResult->CIMG_BeginCapture.chSavePath,
+		Tool_SaveFileToPath(pResult->CIMG_BeginCapture.chSavePath,
             pResult->CIMG_BeginCapture.pbImgData,
             pResult->CIMG_BeginCapture.dwImgSize);
     }
 
     if (pResult->CIMG_BestCapture.pbImgData)
     {
-        SaveImgToDisk(pResult->CIMG_BestCapture.chSavePath,
+		Tool_SaveFileToPath(pResult->CIMG_BestCapture.chSavePath,
             pResult->CIMG_BestCapture.pbImgData,
             pResult->CIMG_BestCapture.dwImgSize);
         //bool bSave  = SaveImgToDisk(pResult->CIMG_BestCapture.chSavePath, pResult->CIMG_BestCapture.pbImgData, pResult->CIMG_BestCapture.dwImgSize, 768, 576, 1); 
@@ -1184,21 +968,21 @@ void BaseCamera::SaveResultToBufferPath(CameraResult* pResult)
 
     if (pResult->CIMG_LastCapture.pbImgData)
     {
-        SaveImgToDisk(pResult->CIMG_LastCapture.chSavePath,
+		Tool_SaveFileToPath(pResult->CIMG_LastCapture.chSavePath,
             pResult->CIMG_LastCapture.pbImgData,
             pResult->CIMG_LastCapture.dwImgSize);
     }
 
     if (pResult->CIMG_BestSnapshot.pbImgData)
     {
-        SaveImgToDisk(pResult->CIMG_BestSnapshot.chSavePath,
+		Tool_SaveFileToPath(pResult->CIMG_BestSnapshot.chSavePath,
             pResult->CIMG_BestSnapshot.pbImgData,
             pResult->CIMG_BestSnapshot.dwImgSize);
     }
 
     if (pResult->CIMG_LastSnapshot.pbImgData)
     {
-        SaveImgToDisk(pResult->CIMG_LastSnapshot.chSavePath,
+		Tool_SaveFileToPath(pResult->CIMG_LastSnapshot.chSavePath,
             pResult->CIMG_BestSnapshot.pbImgData,
             pResult->CIMG_LastSnapshot.dwImgSize);
         //bool bSave  = SaveImgToDisk(pResult->CIMG_LastSnapshot.chSavePath, pResult->CIMG_LastSnapshot.pbImgData, pResult->CIMG_LastSnapshot.dwImgSize, 768, 576, 0); 
@@ -1258,56 +1042,6 @@ void BaseCamera::SetConnectMsg(UINT iConMsg, UINT iDsiConMsg)
     m_iDisConMsg = (iDsiConMsg < 0x403) ? 0x403 : iDsiConMsg;
     LeaveCriticalSection(&m_csFuncCallback);
 }
-
-//void BaseCamera::CompressImg(CameraIMG& camImg, DWORD requireSize)
-//{
-//    if (camImg.dwImgSize <= 0 || camImg.dwImgSize <= requireSize || !(camImg.pbImgData))
-//    {
-//        WriteLog("图片大小为0，或原图已满足要求大小，结束压缩.");
-//        return;
-//    }
-
-//    size_t iImgSize = MAX_IMG_SIZE;
-//    int iCompressQuality = 80;
-//    PBYTE pbDestImg = new BYTE[iImgSize];
-//    do
-//    {
-//        iImgSize = MAX_IMG_SIZE;
-//        memset(pbDestImg, 0, iImgSize);
-//        bool bRet = Tool_Img_ScaleJpg(camImg.pbImgData,
-//            camImg.dwImgSize,
-//            pbDestImg,
-//            &iImgSize,
-//            camImg.wImgWidth,
-//            camImg.wImgHeight,
-//            iCompressQuality);
-
-//        iCompressQuality -= 10;
-//    } while (iCompressQuality >= 10 && iImgSize > requireSize);
-
-//    if (iImgSize <= requireSize)
-//    {
-//        delete[] camImg.pbImgData;
-//        camImg.pbImgData = NULL;
-
-//        camImg.pbImgData = new BYTE[iImgSize];
-//        memcpy(camImg.pbImgData, pbDestImg, iImgSize);
-//        camImg.dwImgSize = iImgSize;
-
-//        char chaLog[MAX_PATH] = { 0 };
-//        sprintf_s(chaLog, sizeof(chaLog), "图片压缩成功, 最后大小为%d", iImgSize);
-//        WriteLog(chaLog);
-//    }
-//    else
-//    {
-//        WriteLog("图片压缩失败，继续使用原图.");
-//    }
-//    if (pbDestImg)
-//    {
-//        delete[] pbDestImg;
-//        pbDestImg = NULL;
-//    }
-//}
 
 void BaseCamera::SendMessageToPlateServer(int iMessageType /*= 1*/)
 {
@@ -1866,26 +1600,91 @@ bool BaseCamera::SetH264CallbackNULL(int iStreamID, DWORD RecvFlag)
 
 bool BaseCamera::SetJpegStreamCallback()
 {
-    if (m_hHvHandle == NULL)
-      {
-          WriteFormatLog("SetJpegStreamCallback, m_hHvHandle == NULL, failed.");
-          return false;
-      }
+	if (m_hHvHandle == NULL)
+	{
+		WRITE_LOG_FMT("m_hHvHandle == NULL, failed.");
+		return false;
+	}
 
-    if (
-        (HVAPI_SetCallBackEx(m_hHvHandle, (PVOID)JPEGStreamCallBack, this, 0, CALLBACK_TYPE_JPEG_FRAME, NULL) != S_OK)
-        )
-    {
-        WriteLog("SetJpegStreamCallback:: SetCallBack failed.");
-        HVAPI_CloseEx(m_hHvHandle);
-        m_hHvHandle = NULL;
-        return false;
-    }
-    else
-    {
-        WriteLog("SetJpegStreamCallback:: SetCallBack success.");
-        return true;
-    }
+	if (
+		(HVAPI_SetCallBackEx(m_hHvHandle, (PVOID)JPEGStreamCallBack, this, 2, CALLBACK_TYPE_JPEG_FRAME, NULL) != S_OK)
+		)
+	{
+		WRITE_LOG_FMT("SetCallBack failed.");
+		//HVAPI_CloseEx(m_hHvHandle);
+		//m_hHvHandle = NULL;
+		return false;
+	}
+	else
+	{
+		WRITE_LOG_FMT("SetCallBack success.");
+		return true;
+	}
+}
+
+bool BaseCamera::UnSetJpegStreamCallback()
+{
+	if (m_hHvHandle == NULL)
+	{
+		WRITE_LOG_FMT("m_hHvHandle == NULL, failed.");
+		return false;
+	}
+
+	if (
+		(HVAPI_SetCallBackEx(m_hHvHandle, NULL, this, 2, CALLBACK_TYPE_JPEG_FRAME, NULL) != S_OK)
+		)
+	{
+		WRITE_LOG_FMT("SetCallBack failed.");
+		return false;
+	}
+	else
+	{
+		WRITE_LOG_FMT("SetCallBack success.");
+		return true;
+	}
+}
+
+bool BaseCamera::GetOneJpegImg(CameraIMG &destImg)
+{
+	WriteLog("GetOneJpegImg::begin.");
+	bool bRet = false;
+
+	if (!destImg.pbImgData)
+	{
+		WriteLog("GetOneJpegImg:: allocate memory.");
+		destImg.pbImgData = new unsigned char[MAX_IMG_SIZE];
+		memset(destImg.pbImgData, 0, MAX_IMG_SIZE);
+		WriteLog("GetOneJpegImg:: allocate memory success.");
+	}
+
+	EnterCriticalSection(&m_csResult);
+	if (m_bJpegComplete)
+	{
+		if (destImg.pbImgData)
+		{
+			memset(destImg.pbImgData, 0, MAX_IMG_SIZE);
+			memcpy(destImg.pbImgData, m_CIMG_StreamJPEG.pbImgData, m_CIMG_StreamJPEG.dwImgSize);
+
+			destImg.dwImgSize = m_CIMG_StreamJPEG.dwImgSize;
+			destImg.wImgHeight = m_CIMG_StreamJPEG.wImgHeight;
+			destImg.wImgWidth = m_CIMG_StreamJPEG.wImgWidth;
+			bRet = true;
+			WriteLog("GetOneJpegImg success.");
+			m_bJpegComplete = false;
+		}
+		else
+		{
+			WriteLog("GetOneJpegImg:: allocate memory failed.");
+		}
+	}
+	else
+	{
+		WriteLog("GetOneJpegImg the image is not ready.");
+	}
+	LeaveCriticalSection(&m_csResult);
+	WriteLog("GetOneJpegImg:: end.");
+
+	return bRet;
 }
 
 bool BaseCamera::StartToSaveAviFile(int iStreamID, const char *fileName, DWORD64 beginTimeTick)

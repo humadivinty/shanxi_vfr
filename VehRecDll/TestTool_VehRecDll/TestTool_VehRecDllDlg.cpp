@@ -444,15 +444,26 @@ void CTestTool_VehRecDllDlg::OnBnClickedButtonGetcardata()
     char chTailImagePath[256] = { 0 };
     char chVideoPath[256] = { 0 };
 
+	SYSTEMTIME systime;
+	GetLocalTime(&systime);//本地时间
+	char chTimeNow[64] = {0};
+	sprintf_s(chTimeNow, sizeof(chTimeNow),  "%04u%02u%02u%02u%02u%02u%03u",
+		systime.wYear,
+		systime.wMonth,
+		systime.wDay,
+		systime.wHour,
+		systime.wMinute,
+		systime.wSecond,
+		systime.wMilliseconds);
+
     CHAR szPath[256] = { 0 };
     //getcwd(szPath,sizeof(szPath));
     memset(szPath, '\0', sizeof(szPath));
     _getcwd(szPath, sizeof(szPath));
 
-    sprintf_s(chSideImagePath, sizeof(chSideImagePath), "%s\\side.jpg", szPath);
-    sprintf_s(chTailImagePath, sizeof(chTailImagePath), "%s\\tail.jpg", szPath);
-    sprintf_s(chVideoPath, sizeof(chVideoPath), "%s\\car.mp4", szPath);
-
+	sprintf_s(chSideImagePath, sizeof(chSideImagePath), "%s\\Result\\side_%s.jpg", szPath, chTimeNow);
+	sprintf_s(chTailImagePath, sizeof(chTailImagePath), "%s\\Result\\tail_%s.jpg", szPath, chTimeNow);
+	sprintf_s(chVideoPath, sizeof(chVideoPath), "%s\\Result\\car_%s.mp4", szPath, chTimeNow);
 
     int iRet = VehRec_GetCarData(m_iCameraHandle, chSideImagePath, chTailImagePath, chVideoPath);
 

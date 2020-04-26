@@ -52,6 +52,7 @@ bool Tool_MakeDir(const char* chImgPath);
 long Tool_GetFileSize(const char *FileName);
 
 bool Tool_PingIPaddress(const char* IpAddress);
+
 #ifdef USE_GID_PLUS
 bool Tool_Img_ScaleJpg(PBYTE pbSrc, int iSrcLen, PBYTE pbDst, size_t *iDstLen, int iDstWidth, int iDstHeight, int compressQuality);
 #endif
