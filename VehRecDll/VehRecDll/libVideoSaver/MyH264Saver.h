@@ -10,7 +10,7 @@
 #include<mutex>
 #include<deque>
 
-#define VIDEO_FRAME_LIST_SIZE 500
+#define VIDEO_FRAME_LIST_SIZE 1500
 
 #define SAVING_FLAG_NOT_SAVE 0
 #define SAVING_FLAG_SAVING 1

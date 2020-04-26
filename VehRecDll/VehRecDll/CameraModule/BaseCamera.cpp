@@ -456,10 +456,9 @@ void BaseCamera::WriteFormatLog(const char* szfmt, ...)
     va_list arg_ptr;
     va_start(arg_ptr, szfmt);
     vsnprintf_s(g_szPbString, sizeof(g_szPbString), szfmt, arg_ptr);
-
-    WriteLog(g_szPbString);
-
     va_end(arg_ptr);
+
+	WriteLog(g_szPbString);
 }
 
 bool BaseCamera::WriteLog(const char* chlog)

@@ -56,7 +56,7 @@ m_hDeleteResultThread(NULL)
     ReadConfig();
 	m_h264Saver.initMode(1);
 
-    m_hStatusCheckThread = (HANDLE)_beginthreadex(NULL, 0, Camera_StatusCheckThread, this, 0, NULL);
+    //m_hStatusCheckThread = (HANDLE)_beginthreadex(NULL, 0, Camera_StatusCheckThread, this, 0, NULL);
     //m_hSendResultThread = (HANDLE)_beginthreadex(NULL, 0, s_SendResultThreadFunc, this, 0, NULL);
 	//m_hDeleteLogThread = (HANDLE)_beginthreadex(NULL, 0, s_DeleteLogThreadFunc, this, 0, NULL);
 	//m_hDeleteResultThread = (HANDLE)_beginthreadex(NULL, 0, s_DeleteResultThreadFunc, this, 0, NULL);
@@ -89,7 +89,7 @@ m_hDeleteResultThread(NULL)
 	m_h264Saver.SetFileNameCallback(this, ReceiveVideoFileNameCallback);
 	m_h264Saver.initMode(1);
 
-    m_hStatusCheckThread = (HANDLE)_beginthreadex(NULL, 0, Camera_StatusCheckThread, this, 0, NULL);
+    //m_hStatusCheckThread = (HANDLE)_beginthreadex(NULL, 0, Camera_StatusCheckThread, this, 0, NULL);
     //m_hSendResultThread = (HANDLE)_beginthreadex(NULL, 0, s_SendResultThreadFunc, this, 0, NULL);
 	//m_hDeleteLogThread = (HANDLE)_beginthreadex(NULL, 0, s_DeleteLogThreadFunc, this, 0, NULL);
 	//m_hDeleteResultThread = (HANDLE)_beginthreadex(NULL, 0, s_DeleteResultThreadFunc, this, 0, NULL);
@@ -121,7 +121,7 @@ void Camera6467_VFR::AnalysisAppendXML(CameraResult* CamResult)
     char chTemp[BUFFERLENTH] = { 0 };
     int iLenth = BUFFERLENTH;
 
-    if (Tool_GetDataAttributFromAppenedInfo(CamResult->pcAppendInfo, VEHICLE_SIDE_NODE_NAME, "TimeHigh", chTemp, &iLenth))
+	if (Tool_GetDataAttributFromAppenedInfo(CamResult->pcAppendInfo, VEHICLE_HEAD_NODE_NAME, "TimeHigh", chTemp, &iLenth))
     {
         DWORD64 iTime = 0;
         DWORD64 iTimeHight = 0;
@@ -132,7 +132,7 @@ void Camera6467_VFR::AnalysisAppendXML(CameraResult* CamResult)
         memset(chTemp, 0, sizeof(chTemp));
         iLenth = BUFFERLENTH;
 
-        if (Tool_GetDataAttributFromAppenedInfo(CamResult->pcAppendInfo, VEHICLE_SIDE_NODE_NAME, "TimeLow", chTemp, &iLenth))
+		if (Tool_GetDataAttributFromAppenedInfo(CamResult->pcAppendInfo, VEHICLE_HEAD_NODE_NAME, "TimeLow", chTemp, &iLenth))
         {
             //DWORD64 iTimeLow = 0;
             //sscanf(chTemp, "%d", &iAxleCount);
@@ -1252,13 +1252,6 @@ int Camera6467_VFR::RecordInfoEnd(DWORD dwCarID)
             }
             else
             {
-                if (m_dwLastCarID != dwCarID)
-                {
-                    //StopSaveAviFile(0, GetTickCount() + getVideoDelayTime() * 1000);
-                    StopSaveAviFile(0, m_pResult->dw64TimeMS + getVideoDelayTime() * 1000);
-                }
-                //SaveResult(m_pResult);
-
                 if (CheckIfSuperLength(m_pResult))
                 {
                     WriteFormatLog("current length %f is larger than max length %d, clear list first.", m_pResult->fVehLenth, m_iSuperLenth);
@@ -1391,14 +1384,6 @@ int Camera6467_VFR::RecordInfoPlate(DWORD dwCarID,
             WriteFormatLog("current car ID  %lu is not same wit result carID %lu.", dwCarID, m_pResult->dwCarID);
         }
 
-        //generateFileName(m_pResult);
-
-        
-        //strPlateTime = strPlateTime.substr(0, 8);
-  
-        //QDir dir(chAviPath);
-        //dir.mkpath(chAviPath);
-
         if(m_dwLastCarID != dwCarID)
         {
             char chImgDir[256] = { 0 };
@@ -1413,14 +1398,6 @@ int Camera6467_VFR::RecordInfoPlate(DWORD dwCarID,
                 strPlateTime.substr(6, 2).c_str());
             MakeSureDirectoryPathExists(chAviPath);
             memset(chAviPath, '\0', sizeof(chAviPath));
-            //sprintf(chAviPath, "%s\\%s\\%lu-%I64u.avi", m_chImageDir, strPlateTime.c_str(), dwCarID, m_pResult->dw64TimeMS);
-            //sprintf_s(chAviPath, sizeof(chAviPath), "%s\\%s\\%s\\%s\\%lu-%I64u.avi", 
-            //    m_chImageDir,
-            //    strPlateTime.substr(0, 4).c_str(),
-            //    strPlateTime.substr(4, 2).c_str(),
-            //    strPlateTime.substr(6, 2).c_str(),
-            //    dwCarID, 
-            //    m_pResult->dw64TimeMS);
 
             sprintf_s(chAviPath, sizeof(chAviPath), "%s\\%s\\%s-%s-%s\\%s.mp4",
                 chImgDir,
@@ -1429,13 +1406,7 @@ int Camera6467_VFR::RecordInfoPlate(DWORD dwCarID,
                 strPlateTime.substr(4, 2).c_str(),
                 strPlateTime.substr(6, 2).c_str(),
                 m_pResult->chPlateTime);
-            //qDebug()<<"chAviPath ="<<chAviPath;
-            //StartToSaveAviFile(0, chAviPath, getVideoAdvanceTime()*1000);
-            //StartToSaveAviFile(0, chAviPath, (m_pResult->dw64TimeMS - getVideoAdvanceTime() * 1000));
-            //memset(m_pResult->chSaveFileName, '\0', sizeof(m_pResult->chSaveFileName));
-            //memcpy(m_pResult->chSaveFileName, chAviPath, strlen(chAviPath));
 
-            //WriteFormatLog("current car ID  %lu , avi fileName = %s.", dwCarID, chAviPath);
             std::string strFinalString = Tool_ReplaceStringInStd(chAviPath, "\\\\", "\\");
             WriteFormatLog("final save path = %s  .", strFinalString.c_str());
             const char* pChVideoPath = strFinalString.c_str();

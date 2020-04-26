@@ -28,7 +28,7 @@
 #define INI_FILE_NAME "\\VehRecDll_XLW.ini"
 #define DLL_LOG_NAME "VehRecDll_XLW.log"
 #define  LOG_DIR_NAME "XLWLog"
-#define  RESULT_DIR_NAME "Result"
+#define  RESULT_DIR_NAME "Buffer"
 
 #ifdef WINXP
 #define MY_SPRINTF sprintf
