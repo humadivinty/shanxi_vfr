@@ -54,6 +54,7 @@ m_hDeleteResultThread(NULL)
 {
     InitializeCriticalSection(&m_csResult);
     ReadConfig();
+	m_h264Saver.SetFileNameCallback(this, ReceiveVideoFileNameCallback);
 	m_h264Saver.initMode(1);
 	m_h264Saver.SetLogEnable(m_bVideoLogEnable);
 
@@ -1153,7 +1154,7 @@ void Camera6467_VFR::ReceiveVideoFileName(const char* videoFileName)
 {
 	EnterCriticalSection(&m_csFuncCallback);
 	if (NULL != videoFileName
-		&& std::end(m_lsCompleteVideoName) != std::find(std::begin(m_lsCompleteVideoName), std::end(m_lsCompleteVideoName), videoFileName))
+		&& std::end(m_lsCompleteVideoName) == std::find(std::begin(m_lsCompleteVideoName), std::end(m_lsCompleteVideoName), videoFileName))
 	{
 		if (m_lsCompleteVideoName.size() >= 3)
 		{

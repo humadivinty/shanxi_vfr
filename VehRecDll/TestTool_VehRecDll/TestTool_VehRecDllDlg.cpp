@@ -496,9 +496,22 @@ void CTestTool_VehRecDllDlg::OnBnClickedButtonGetcardata()
 void CTestTool_VehRecDllDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
+	char chLog[256] = { 0 };
+	int iSignal = 1;
+	int iRet = 0;
 	switch (nIDEvent)
 	{
 	case 1:
+		iSignal = 1;
+		iRet = VehRec_VEHSignle(m_iCameraHandle, iSignal);
+		sprintf_s(chLog, sizeof(chLog), " %d = VehRec_VEHSignle(%d,%d)", iRet, m_iCameraHandle, iSignal);
+		ShowMessage(chLog);
+
+		iSignal = 2;
+		iRet = VehRec_VEHSignle(m_iCameraHandle, iSignal);
+		sprintf_s(chLog, sizeof(chLog), " %d = VehRec_VEHSignle(%d,%d)", iRet, m_iCameraHandle, iSignal);
+		ShowMessage(chLog);
+
 		OnBnClickedButtonGetcardata();
 		break;
 	default:

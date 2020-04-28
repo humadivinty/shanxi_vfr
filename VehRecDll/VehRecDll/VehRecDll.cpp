@@ -240,6 +240,25 @@ VEHRECDLL_API int WINAPI VehRec_VEHSignle(int handle, int sig)
         pCamera->SetResultSendSignal(-1, iSendStatus);
         iRet = 0;
     }
+
+	bool bGetJpeg = false;
+	for (int i = 0; i < 10; i++)
+	{
+		if (pCamera->GetOneJpegImg(g_CIMG_StreamJPEG))
+		{
+			WRITE_LOG("GetOneJpegImg success, data = %p, length = %lu",
+				g_CIMG_StreamJPEG.pbImgData,
+				g_CIMG_StreamJPEG.dwImgSize);
+			bGetJpeg = true;
+			break;
+		}
+		Sleep(50);
+	}
+	if (!bGetJpeg)
+	{
+		WRITE_LOG("GetOneJpegImg failed.");
+	}
+
     WRITE_LOG("finish, return %d", iRet);
     return iRet;
 }
@@ -259,7 +278,7 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
     Tool_MakeFileDir(recfile);
 
     int iRet = -1;
-	bool bGetJpeg = false;
+
     Camera6467_VFR* pCamera = (Camera6467_VFR*)DeviceListManager::GetInstance()->GetDeviceById(handle - BASIC_NUMBER);
     if (pCamera != NULL)
     {
@@ -268,20 +287,6 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
 			WRITE_LOG("当前初始化为回调模式，不支持该接口调用");
 			return -1;
 		}
-
-		for (int i = 0; i < 10; i++)
-		{
-			if (pCamera->GetOneJpegImg(g_CIMG_StreamJPEG))
-			{
-				WRITE_LOG("GetOneJpegImg success, data = %p, length = %lu",
-					g_CIMG_StreamJPEG.pbImgData,
-					g_CIMG_StreamJPEG.dwImgSize);
-				bGetJpeg = true;
-				break;
-			}
-			Sleep(50);
-		}
-
         std::shared_ptr<CameraResult> pTempResult = nullptr;
 
         int iDelayTime = pCamera->getResultWaitTime();
@@ -324,12 +329,46 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
             Sleep(50);
         } while (iCurrentTic < (iFirstTic + iDelayTime));
 
+		char* pSideImagePath = NULL;
+		unsigned char* pSideImageData = NULL;
+		unsigned long  iSideImageSize = 0;
+
+		char* pTailImagePath = NULL;
+		unsigned char* pTailImageData = NULL;
+		unsigned long iTailImageSize = 0;
+
+		char* pVideoPath = NULL;
+
+		if (g_CIMG_StreamJPEG.dwImgSize > 0)
+		{
+			pTailImagePath = NULL;
+			pTailImageData = g_CIMG_StreamJPEG.pbImgData;
+			iTailImageSize = g_CIMG_StreamJPEG.dwImgSize;
+		}
+
         if (pTempResult)
         {
             WRITE_LOG("get result success, plate number = %s, carID = %lu.", pTempResult->chPlateNO, pTempResult->dwCarID);
             if (!FuncfindIfSendBefore(g_SentCarList, pTempResult->dwCarID))
             {
 				AddCarIDToTheList(g_SentCarList, pTempResult->dwCarID);
+
+				if (pTempResult->CIMG_BestCapture.dwImgSize > 0)
+				{
+					pSideImagePath = pTempResult->CIMG_BestCapture.chSavePath;
+					pSideImageData = pTempResult->CIMG_BestCapture.pbImgData;
+					iSideImageSize = pTempResult->CIMG_BestCapture.dwImgSize;
+				}
+				if (pTempResult->CIMG_LastCapture.dwImgSize > 0)
+				{
+					pTailImagePath = pTempResult->CIMG_LastCapture.chSavePath;
+					pTailImageData = pTempResult->CIMG_LastCapture.pbImgData;
+					iTailImageSize = pTempResult->CIMG_LastCapture.dwImgSize;
+				}
+				if (strlen(pTempResult->chSaveFileName) > 0)
+				{
+					pVideoPath = pTempResult->chSaveFileName;
+				}
             }
             else
             {
@@ -339,138 +378,89 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
 					WRITE_LOG("result mode == RESULT_MODE_FRONT,DeleteFrontResult. ");
 					pCamera->DeleteFrontResult(NULL);
 				}
-                return -1;
-            }			
-
-            char* pSideImagePath = NULL;
-            unsigned char* pSideImageData = NULL;
-            unsigned long  iSideImageSize = 0;
-
-            char* pTailImagePath = NULL;
-            unsigned char* pTailImageData = NULL;
-            unsigned long iTailImageSize = 0;
-
-            char* pVideoPath = NULL;
-
-            if (pTempResult->CIMG_BestCapture.dwImgSize > 0)
-            {
-                pSideImagePath = pTempResult->CIMG_BestCapture.chSavePath;
-                pSideImageData = pTempResult->CIMG_BestCapture.pbImgData;
-                iSideImageSize = pTempResult->CIMG_BestCapture.dwImgSize;
-            }
-			if (bGetJpeg && g_CIMG_StreamJPEG.dwImgSize > 0)
-			{
-				pTailImagePath = NULL;
-				pTailImageData = g_CIMG_StreamJPEG.pbImgData;
-				iTailImageSize = g_CIMG_StreamJPEG.dwImgSize;
-			}
-            else if (pTempResult->CIMG_LastCapture.dwImgSize > 0)
-            {
-				pTailImagePath = pTempResult->CIMG_LastCapture.chSavePath;
-                pTailImageData = pTempResult->CIMG_LastCapture.pbImgData;
-                iTailImageSize = pTempResult->CIMG_LastCapture.dwImgSize;
-            }
-            if (strlen(pTempResult->chSaveFileName) > 0)
-            {
-                pVideoPath = pTempResult->chSaveFileName;
-            }
-
-            BOOL bRet = FALSE;
-			if (NULL != pSideImageData
-				&& iSideImageSize > 0)
-            {
-                if (strlen(colpic) > 0)
-                {
-                    //rename(pSideImagePath, colpic);
-                    //bRet = CopyFile(pSideImagePath, colpic, FALSE);
-                    //WRITE_LOG("get colpic finish = %s, operation code = %d, getlast error = %s",
-                    //    colpic,
-                    //    bRet,
-                    //    bRet ? "NULL" : Tool_GetLastErrorAsString().c_str());
-                    bRet = Tool_SaveFileToPath(colpic, pSideImageData, iSideImageSize);
-                    WRITE_LOG("get colpic success = %s, return code = %d", colpic, bRet);
-                }
-                else
-                {
-                    sprintf(colpic, "%s", pSideImagePath);
-                }
-            }
-            else
-            {
-                WRITE_LOG("side image is not ready.");
-            }
-            
-			if (NULL != pTailImageData
-				&& iTailImageSize > 0)
-            {
-                if (strlen(platepic) > 0)
-                {
-                    //rename(pTailImagePath, colpic);
-                    //bRet = FALSE;
-                    //bRet = CopyFile(pTailImagePath, platepic, FALSE);
-                    //WRITE_LOG("get platepic finish = %s, operation code = %d, getlast error = %s",
-                    //    platepic,
-                    //    bRet,
-                    //    bRet ? "NULL" : Tool_GetLastErrorAsString().c_str());
-
-                    bRet = Tool_SaveFileToPath(platepic, pTailImageData, iTailImageSize);
-                    WRITE_LOG("get platepic success = %s, return code = %d", platepic, bRet);
-                }
-                else
-                {
-                    sprintf(platepic, "%s", pTailImagePath);
-                }
-            }
-            else
-            {
-                WRITE_LOG("tail image is not ready.");
-            }
-
-            if (NULL != pVideoPath
-                && strlen(pVideoPath) > 0)
-            {
-                if (strlen(recfile) > 0)
-                {
-					if (!pCamera->CheckIfFileNameIntheVideoList(pVideoPath))
-					{
-						WRITE_LOG("video name %s  is not complete.", pVideoPath);
-					}
-                    bRet = FALSE;
-                    bRet = CopyFile(pVideoPath, recfile, FALSE);
-                    WRITE_LOG("get recfile finish = %s, operation code = %d, getlast error = %s",
-                        recfile,
-                        bRet,
-                        bRet ? "NULL" : Tool_GetLastErrorAsString().c_str());
-
-					if (bRet
-						&& 0 == remove(pVideoPath))
-					{
-						WRITE_LOG("remove file %s success.", pVideoPath);
-					}
-                }
-                else
-                {
-                    sprintf(recfile, "%s", pVideoPath);
-                }
-            }
-            else
-            {
-                WRITE_LOG("video is not ready.");
-            }
-
-            if (RESULT_MODE_FRONT == pCamera->GetResultMode())
-            {
-				WRITE_LOG("ResultMode == RESULT_MODE_FRONT, DeleteFrontResult");
-                pCamera->DeleteFrontResult(NULL);
-                //pCamera->TryWaitCondition();
-            }
-            
-            iRet = 0;
+            }	
         }
         else
         {
             WRITE_LOG("result is not ready");
         }
+
+		BOOL bRet = FALSE;
+		if (NULL != pSideImageData
+			&& iSideImageSize > 0)
+		{
+			if (strlen(colpic) > 0)
+			{
+				bRet = Tool_SaveFileToPath(colpic, pSideImageData, iSideImageSize);
+				WRITE_LOG("get colpic success = %s, return code = %d", colpic, bRet);
+			}
+			else
+			{
+				sprintf(colpic, "%s", pSideImagePath);
+			}
+		}
+		else
+		{
+			WRITE_LOG("side image is not ready.");
+		}
+
+		if (NULL != pTailImageData
+			&& iTailImageSize > 0)
+		{
+			if (strlen(platepic) > 0)
+			{
+				bRet = Tool_SaveFileToPath(platepic, pTailImageData, iTailImageSize);
+				WRITE_LOG("get platepic success = %s, return code = %d", platepic, bRet);
+			}
+			else
+			{
+				sprintf(platepic, "%s", pTailImagePath);
+			}
+		}
+		else
+		{
+			WRITE_LOG("tail image is not ready.");
+		}
+
+		if (NULL != pVideoPath
+			&& strlen(pVideoPath) > 0)
+		{
+			if (strlen(recfile) > 0)
+			{
+				if (!pCamera->CheckIfFileNameIntheVideoList(pVideoPath))
+				{
+					WRITE_LOG("video name %s  is not complete.", pVideoPath);
+				}
+				bRet = FALSE;
+				bRet = CopyFile(pVideoPath, recfile, FALSE);
+				WRITE_LOG("get recfile finish = %s, operation code = %d, getlast error = %s",
+					recfile,
+					bRet,
+					bRet ? "NULL" : Tool_GetLastErrorAsString().c_str());
+
+				if (bRet
+					&& 0 == remove(pVideoPath))
+				{
+					WRITE_LOG("remove file %s success.", pVideoPath);
+				}
+			}
+			else
+			{
+				sprintf(recfile, "%s", pVideoPath);
+			}
+		}
+		else
+		{
+			WRITE_LOG("video is not ready.");
+		}
+
+		if (RESULT_MODE_FRONT == pCamera->GetResultMode())
+		{
+			WRITE_LOG("ResultMode == RESULT_MODE_FRONT, DeleteFrontResult");
+			pCamera->DeleteFrontResult(NULL);
+			//pCamera->TryWaitCondition();
+		}
+		iRet = 0;
     }
     WRITE_LOG("finish, return %d", iRet);
     return iRet;
