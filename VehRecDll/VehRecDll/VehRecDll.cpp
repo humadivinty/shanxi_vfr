@@ -352,54 +352,27 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
 
             char* pVideoPath = NULL;
 
-            int iErrorMode = 0;
-            if (pTempResult->CIMG_LastSnapshot.dwImgSize > 0
-                && pTempResult->CIMG_BestCapture.dwImgSize <= 0)
+            if (pTempResult->CIMG_BestCapture.dwImgSize > 0)
             {
-                iErrorMode = 1;
-				WRITE_LOG("iErrorMode  == 1, only have last snapshot, use it to replace tail image. ");
+                pSideImagePath = pTempResult->CIMG_BestCapture.chSavePath;
+                pSideImageData = pTempResult->CIMG_BestCapture.pbImgData;
+                iSideImageSize = pTempResult->CIMG_BestCapture.dwImgSize;
             }
-
-            switch (iErrorMode)
+			if (bGetJpeg && g_CIMG_StreamJPEG.dwImgSize > 0)
+			{
+				pTailImagePath = NULL;
+				pTailImageData = g_CIMG_StreamJPEG.pbImgData;
+				iTailImageSize = g_CIMG_StreamJPEG.dwImgSize;
+			}
+            else if (pTempResult->CIMG_LastCapture.dwImgSize > 0)
             {
-            case 0:
-                if (pTempResult->CIMG_BestCapture.dwImgSize > 0)
-                {
-                    pSideImagePath = pTempResult->CIMG_BestCapture.chSavePath;
-                    pSideImageData = pTempResult->CIMG_BestCapture.pbImgData;
-                    iSideImageSize = pTempResult->CIMG_BestCapture.dwImgSize;
-                }
-				if (bGetJpeg && g_CIMG_StreamJPEG.dwImgSize > 0)
-				{
-					pTailImagePath = NULL;
-					pTailImageData = g_CIMG_StreamJPEG.pbImgData;
-					iTailImageSize = g_CIMG_StreamJPEG.dwImgSize;
-				}
-                else if (pTempResult->CIMG_LastCapture.dwImgSize > 0)
-                {
-					pTailImagePath = pTempResult->CIMG_LastCapture.chSavePath;
-                    pTailImageData = pTempResult->CIMG_LastCapture.pbImgData;
-                    iTailImageSize = pTempResult->CIMG_LastCapture.dwImgSize;
-                }
-                if (strlen(pTempResult->chSaveFileName) > 0)
-                {
-                    pVideoPath = pTempResult->chSaveFileName;
-                }
-                break;
-            case 1:
-                if (pTempResult->CIMG_LastSnapshot.dwImgSize > 0)
-                {
-                    pTailImagePath = pTempResult->CIMG_LastSnapshot.chSavePath;
-                    pTailImageData = pTempResult->CIMG_LastCapture.pbImgData;
-                    iTailImageSize = pTempResult->CIMG_LastCapture.dwImgSize;
-                }
-                if (strlen(pTempResult->chSaveFileName) > 0)
-                {
-                    pVideoPath = pTempResult->chSaveFileName;
-                }
-                break;
-            default:
-                break;
+				pTailImagePath = pTempResult->CIMG_LastCapture.chSavePath;
+                pTailImageData = pTempResult->CIMG_LastCapture.pbImgData;
+                iTailImageSize = pTempResult->CIMG_LastCapture.dwImgSize;
+            }
+            if (strlen(pTempResult->chSaveFileName) > 0)
+            {
+                pVideoPath = pTempResult->chSaveFileName;
             }
 
             BOOL bRet = FALSE;

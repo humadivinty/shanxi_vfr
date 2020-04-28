@@ -55,6 +55,7 @@ m_hDeleteResultThread(NULL)
     InitializeCriticalSection(&m_csResult);
     ReadConfig();
 	m_h264Saver.initMode(1);
+	m_h264Saver.SetLogEnable(m_bVideoLogEnable);
 
     //m_hStatusCheckThread = (HANDLE)_beginthreadex(NULL, 0, Camera_StatusCheckThread, this, 0, NULL);
     //m_hSendResultThread = (HANDLE)_beginthreadex(NULL, 0, s_SendResultThreadFunc, this, 0, NULL);
@@ -88,6 +89,7 @@ m_hDeleteResultThread(NULL)
     ReadConfig();
 	m_h264Saver.SetFileNameCallback(this, ReceiveVideoFileNameCallback);
 	m_h264Saver.initMode(1);
+	m_h264Saver.SetLogEnable(m_bVideoLogEnable);
 
     //m_hStatusCheckThread = (HANDLE)_beginthreadex(NULL, 0, Camera_StatusCheckThread, this, 0, NULL);
     //m_hSendResultThread = (HANDLE)_beginthreadex(NULL, 0, s_SendResultThreadFunc, this, 0, NULL);

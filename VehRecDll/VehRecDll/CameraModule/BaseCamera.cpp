@@ -46,7 +46,7 @@ m_strIP("")
 
     memset(m_chLogPath, '\0', sizeof(m_chLogPath));
     //ReadConfig();
-    m_h264Saver.SetLogEnable(m_bVideoLogEnable);
+    //m_h264Saver.SetLogEnable(m_bVideoLogEnable);
 }
 
 BaseCamera::BaseCamera(const char* chIP, HWND  hWnd, int Msg) :
@@ -79,7 +79,7 @@ m_strIP(chIP)
     memset(m_chLogPath, '\0', sizeof(m_chLogPath));
 
     //ReadConfig();
-    m_h264Saver.SetLogEnable(m_bVideoLogEnable);
+    //m_h264Saver.SetLogEnable(m_bVideoLogEnable);
 }
 
 BaseCamera::~BaseCamera()

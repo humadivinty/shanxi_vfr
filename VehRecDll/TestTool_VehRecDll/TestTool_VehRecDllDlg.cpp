@@ -461,9 +461,24 @@ void CTestTool_VehRecDllDlg::OnBnClickedButtonGetcardata()
     memset(szPath, '\0', sizeof(szPath));
     _getcwd(szPath, sizeof(szPath));
 
-	sprintf_s(chSideImagePath, sizeof(chSideImagePath), "%s\\Result\\%s_side.jpg", szPath, chTimeNow);
-	sprintf_s(chTailImagePath, sizeof(chTailImagePath), "%s\\Result\\%s_tail.jpg", szPath, chTimeNow);
-	sprintf_s(chVideoPath, sizeof(chVideoPath), "%s\\Result\\%s_car.mp4", szPath, chTimeNow);
+	sprintf_s(chSideImagePath, sizeof(chSideImagePath), "%s\\Result\\%04u%02u%02u\\%s_side.jpg",
+		szPath, 
+		systime.wYear,
+		systime.wMonth,
+		systime.wDay,
+		chTimeNow);
+	sprintf_s(chTailImagePath, sizeof(chTailImagePath), "%s\\Result\\%04u%02u%02u\\%s_tail.jpg",
+		szPath,
+		systime.wYear,
+		systime.wMonth,
+		systime.wDay,
+		chTimeNow);
+	sprintf_s(chVideoPath, sizeof(chVideoPath), "%s\\Result\\%04u%02u%02u\\%s_car.mp4",
+		szPath,
+		systime.wYear,
+		systime.wMonth,
+		systime.wDay,
+		chTimeNow);
 
     int iRet = VehRec_GetCarData(m_iCameraHandle, chSideImagePath, chTailImagePath, chVideoPath);
 
