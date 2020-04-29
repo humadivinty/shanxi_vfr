@@ -570,9 +570,9 @@ void Camera6467_VFR::ReadConfig()
     //Tool_ReadIntValueFromConfigFile(INI_FILE_NAME, "Filter", "ResultTimeOut", iTempValue);
     //m_iResultTimeOut = iTempValue > 0 ? iTempValue : 1500;    
 
-    iTempValue = 1;
+    iTempValue = 2000;
     Tool_ReadIntValueFromConfigFile(INI_FILE_NAME, "Result", "WaitTimeOut", iTempValue);
-    m_iWaitVfrTimeOut = iTempValue > 0 ? iTempValue : 2;
+    m_iWaitVfrTimeOut = iTempValue > 0 ? iTempValue : 2000;
 
     //iTempValue = 0;
     //Tool_ReadIntValueFromConfigFile(INI_FILE_NAME, "Result", "HoldDays", iTempValue);

@@ -395,7 +395,7 @@ void BaseCamera::ReadConfig()
         Tool_WriteKeyValueFromConfigFile(INI_FILE_NAME, "Result", "SavePath", (char*)Tool_GetCurrentPath(), sizeof(chTemp));
     }
 
-    int iTemp = 5;
+    int iTemp = 3;
     Tool_ReadIntValueFromConfigFile(INI_FILE_NAME, "Video", "AdvanceTime", iTemp);
     m_iVideoAdvanceTime = iTemp;
     iTemp = 2;
