@@ -23,6 +23,7 @@
 extern char g_chLogPath[256];
 int g_iLogHoldDays = 30;
 CameraIMG g_CIMG_StreamJPEG;
+bool g_bUpdataTailImage = false;
 
 std::list<unsigned long> g_SentCarList;
 bool FuncfindIfSendBefore(std::list<unsigned long>& carIDList, unsigned long carID)
@@ -250,6 +251,7 @@ VEHRECDLL_API int WINAPI VehRec_VEHSignle(int handle, int sig)
 				g_CIMG_StreamJPEG.pbImgData,
 				g_CIMG_StreamJPEG.dwImgSize);
 			bGetJpeg = true;
+			g_bUpdataTailImage = true;
 			break;
 		}
 		Sleep(50);
@@ -338,6 +340,23 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
 		unsigned long iTailImageSize = 0;
 
 		char* pVideoPath = NULL;
+
+		if (!g_bUpdataTailImage)
+		{
+			WRITE_LOG("g_bUpdataTailImage = false, get new tail image");
+			for (int i = 0; i < 10; i++)
+			{
+				if (pCamera->GetOneJpegImg(g_CIMG_StreamJPEG))
+				{
+					WRITE_LOG("GetOneJpegImg success, data = %p, length = %lu",
+						g_CIMG_StreamJPEG.pbImgData,
+						g_CIMG_StreamJPEG.dwImgSize);					
+					break;
+				}
+				Sleep(50);
+			}
+		}
+		g_bUpdataTailImage = false;
 
 		if (g_CIMG_StreamJPEG.dwImgSize > 0)
 		{
