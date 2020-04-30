@@ -192,6 +192,8 @@ public:
     bool StopSaveAviFile(int iStreamID, INT64 TimeFlag = 0);
 
     void generateFileName(CameraResult* pResult);
+	std::string createVideoFileName(const char* timeString);
+
     void SetImageDir(const char* dirPath);
     void GetImageDir(char* buffer, size_t bufSize);
 
@@ -241,6 +243,7 @@ protected:
     bool m_bSynTime;
     bool m_bFirstH264Frame;
 	bool m_bJpegComplete;
+	bool m_bSaveVideoEnable;
 
     char m_chDeviceID[3];
     char m_chStationID[7];

@@ -450,17 +450,20 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
 				{
 					WRITE_LOG("video name %s  is not complete.", pVideoPath);
 				}
-				bRet = FALSE;
-				bRet = CopyFile(pVideoPath, recfile, FALSE);
-				WRITE_LOG("get recfile finish = %s, operation code = %d, getlast error = %s",
-					recfile,
-					bRet,
-					bRet ? "NULL" : Tool_GetLastErrorAsString().c_str());
-
-				if (bRet
-					&& 0 == remove(pVideoPath))
+				else
 				{
-					WRITE_LOG("remove file %s success.", pVideoPath);
+					bRet = FALSE;
+					bRet = CopyFile(pVideoPath, recfile, FALSE);
+					WRITE_LOG("get recfile finish = %s, operation code = %d, getlast error = %s",
+						recfile,
+						bRet,
+						bRet ? "NULL" : Tool_GetLastErrorAsString().c_str());
+
+					if (bRet
+						&& 0 == remove(pVideoPath))
+					{
+						WRITE_LOG("remove file %s success.", pVideoPath);
+					}
 				}
 			}
 			else

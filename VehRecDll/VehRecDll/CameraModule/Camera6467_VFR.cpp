@@ -55,7 +55,10 @@ m_hDeleteResultThread(NULL)
     InitializeCriticalSection(&m_csResult);
     ReadConfig();
 	m_h264Saver.SetFileNameCallback(this, ReceiveVideoFileNameCallback);
-	m_h264Saver.initMode(1);
+	if (m_bSaveVideoEnable)
+	{
+		m_h264Saver.initMode(1);
+	}
 	m_h264Saver.SetLogEnable(m_bVideoLogEnable);
 
     //m_hStatusCheckThread = (HANDLE)_beginthreadex(NULL, 0, Camera_StatusCheckThread, this, 0, NULL);
@@ -89,7 +92,12 @@ m_hDeleteResultThread(NULL)
 {
     ReadConfig();
 	m_h264Saver.SetFileNameCallback(this, ReceiveVideoFileNameCallback);
-	m_h264Saver.initMode(1);
+
+	if (m_bSaveVideoEnable)
+	{
+		m_h264Saver.initMode(1);
+	}
+	
 	m_h264Saver.SetLogEnable(m_bVideoLogEnable);
 
     //m_hStatusCheckThread = (HANDLE)_beginthreadex(NULL, 0, Camera_StatusCheckThread, this, 0, NULL);
@@ -1387,40 +1395,17 @@ int Camera6467_VFR::RecordInfoPlate(DWORD dwCarID,
             WriteFormatLog("current car ID  %lu is not same wit result carID %lu.", dwCarID, m_pResult->dwCarID);
         }
 
-        if(m_dwLastCarID != dwCarID)
+		if (m_dwLastCarID != dwCarID && m_bSaveVideoEnable)
         {
-            char chImgDir[256] = { 0 };
-            GetImageDir(chImgDir, sizeof(chImgDir));
-            std::string strPlateTime(m_pResult->chPlateTime);
-            char chAviPath[256] = { 0 };
-            sprintf(chAviPath, "%s\\%s\\%s-%s-%s\\",
-                chImgDir,
-                RESULT_DIR_NAME,
-                strPlateTime.substr(0, 4).c_str(),
-                strPlateTime.substr(4, 2).c_str(),
-                strPlateTime.substr(6, 2).c_str());
-            MakeSureDirectoryPathExists(chAviPath);
-            memset(chAviPath, '\0', sizeof(chAviPath));
-
-            sprintf_s(chAviPath, sizeof(chAviPath), "%s\\%s\\%s-%s-%s\\%s.mp4",
-                chImgDir,
-                RESULT_DIR_NAME,
-                strPlateTime.substr(0, 4).c_str(),
-                strPlateTime.substr(4, 2).c_str(),
-                strPlateTime.substr(6, 2).c_str(),
-                m_pResult->chPlateTime);
-
-            std::string strFinalString = Tool_ReplaceStringInStd(chAviPath, "\\\\", "\\");
-            WriteFormatLog("final save path = %s  .", strFinalString.c_str());
-            const char* pChVideoPath = strFinalString.c_str();
+			std::string strFinalString = createVideoFileName(m_pResult->chPlateTime);
+			const char* pChVideoPath = strFinalString.c_str();
 
             if (!Tool_CheckIfFileNameIntheList(m_lsVideoName, pChVideoPath, &m_csFuncCallback))
             {
                 StartToSaveAviFile(0, pChVideoPath, (m_pResult->dw64TimeMS - getVideoAdvanceTime() * 1000));
-                memset(m_pResult->chSaveFileName, '\0', sizeof(m_pResult->chSaveFileName));
-                memcpy(m_pResult->chSaveFileName, pChVideoPath, strlen(pChVideoPath));
 
-                WriteFormatLog("current car ID  %lu , avi fileName = %s.", dwCarID, chAviPath);
+				Tool_CopyStringToBuffer(m_pResult->chSaveFileName, sizeof(m_pResult->chSaveFileName), pChVideoPath);
+				WriteFormatLog("current car ID  %lu , video fileName = %s.", dwCarID, pChVideoPath);
 
                 StopSaveAviFile(0, m_pResult->dw64TimeMS + getVideoDelayTime() * 1000);
 
@@ -1428,7 +1413,7 @@ int Camera6467_VFR::RecordInfoPlate(DWORD dwCarID,
             }
             else
             {
-                WriteFormatLog("current car ID  %lu ,but avi fileName = %s is already save, so do not save it.", dwCarID, chAviPath);
+				WriteFormatLog("current car ID  %lu ,but avi fileName = %s is already save, so do not save it.", dwCarID, pChVideoPath);
             }
         }
 
@@ -1899,9 +1884,12 @@ void Camera6467_VFR::CheckStatus()
 
 bool Camera6467_VFR::checkIfHasThreePic(std::shared_ptr<CameraResult> result)
 {
-	if (result->CIMG_BestCapture.dwImgSize > 0 
-		&& CheckIfFileNameIntheVideoList(result->chSaveFileName))
+	if (result->CIMG_BestCapture.dwImgSize > 0 )
 	{
+		if (m_bSaveVideoEnable)
+		{
+			return CheckIfFileNameIntheVideoList(result->chSaveFileName);
+		}
 		return true;
 	}
 
