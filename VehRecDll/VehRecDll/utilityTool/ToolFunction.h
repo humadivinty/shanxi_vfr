@@ -156,3 +156,7 @@ bool Tool_AddFileNameToTheList(std::list<std::string>& fileNameList, std::string
 
 void Tool_MakeFileDir(const char* filePath);
 
+bool Tool_FuncfindIfSendBefore(std::list<unsigned long>& carIDList, unsigned long carID);
+
+void Tool_AddCarIDToTheList(std::list<unsigned long>& carIDList, unsigned long carID);
+

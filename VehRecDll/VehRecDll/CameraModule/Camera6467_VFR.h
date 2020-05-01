@@ -84,6 +84,9 @@ public:
 		pCamera->ReceiveVideoFileName(fileName);
 	}
 
+	bool FindIfCarIDSentBefore(unsigned long carID);
+	void AddCarIDToSentList(unsigned long carID);
+
 public:
 
     virtual int RecordInfoBegin(DWORD dwCarID);
@@ -224,6 +227,7 @@ private:
     std::list<SendStatues> StatusList;
     std::list<std::string> m_lsVideoName;
 	std::list<std::string >m_lsCompleteVideoName;
+	std::list<unsigned long> m_lsSentCarIDList;
 
     std::shared_ptr<CameraResult> m_pLastResult;
     //CCusSemaphore m_MySemaphore;

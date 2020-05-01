@@ -25,30 +25,6 @@ int g_iLogHoldDays = 30;
 CameraIMG g_CIMG_StreamJPEG;
 bool g_bUpdataTailImage = false;
 
-std::list<unsigned long> g_SentCarList;
-bool FuncfindIfSendBefore(std::list<unsigned long>& carIDList, unsigned long carID)
-{
-	if (carIDList.size() <= 0)
-	{
-		return false;
-	}
-	if (std::end(carIDList) == std::find(std::begin(carIDList), std::end(carIDList), carID))
-	{
-		return false;
-	}
-	return true;
-}
-
-void AddCarIDToTheList(std::list<unsigned long>& carIDList, unsigned long carID)
-{
-	if (carIDList.size() > 5)
-	{
-		carIDList.pop_front();
-	}
-	carIDList.push_back(carID);
-}
-
-
 VEHRECDLL_API int WINAPI VehRec_InitEx(int iLog, char *iLogPath, int iLogSaveDay)
 {
     Tool_SetLogPath(iLogPath);
@@ -311,13 +287,13 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
 
             if (pTempResult
                 && pCamera->checkIfHasThreePic(pTempResult)
-                && !FuncfindIfSendBefore(g_SentCarList, pTempResult->dwCarID)
+				&& !pCamera->FindIfCarIDSentBefore(pTempResult->dwCarID)
                 )
             {
                 break;
             }
             if (pTempResult
-                && FuncfindIfSendBefore(g_SentCarList, pTempResult->dwCarID))
+				&& pCamera->FindIfCarIDSentBefore(pTempResult->dwCarID))
             {
 				WRITE_LOG("get result , plate number = %s, carID = %lu but it is sent before, search again.",
 					pTempResult->chPlateNO,
@@ -368,9 +344,9 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
         if (pTempResult)
         {
             WRITE_LOG("get result success, plate number = %s, carID = %lu.", pTempResult->chPlateNO, pTempResult->dwCarID);
-            if (!FuncfindIfSendBefore(g_SentCarList, pTempResult->dwCarID))
+			if (!pCamera->FindIfCarIDSentBefore( pTempResult->dwCarID))
             {
-				AddCarIDToTheList(g_SentCarList, pTempResult->dwCarID);
+				pCamera->AddCarIDToSentList( pTempResult->dwCarID);
 
 				if (pTempResult->CIMG_BestCapture.dwImgSize > 0)
 				{
@@ -391,7 +367,7 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
             }
             else
             {
-                WRITE_LOG("current reesult, plate number = %s, carID = %lu is same with last one, through it, return -1.", pTempResult->chPlateNO, pTempResult->dwCarID);
+                WRITE_LOG("current reesult, plate number = %s, carID = %lu is same with last one, through it.", pTempResult->chPlateNO, pTempResult->dwCarID);
 				if (RESULT_MODE_FRONT == pCamera->GetResultMode())
 				{
 					WRITE_LOG("result mode == RESULT_MODE_FRONT,DeleteFrontResult. ");

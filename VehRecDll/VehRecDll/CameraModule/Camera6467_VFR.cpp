@@ -30,6 +30,8 @@
         return 0;\
     }
 
+#define VFR_WRITE_LOG(fmt, ...) WriteFormatLog("%s:: "fmt,  __FUNCTION__,##__VA_ARGS__);
+
 Camera6467_VFR::Camera6467_VFR() :
 BaseCamera(),
 m_dwLastCarID(-1),
@@ -1186,11 +1188,28 @@ bool Camera6467_VFR::CheckIfFileNameIntheVideoList(const char* fileName)
 	return bFind;
 }
 
+bool Camera6467_VFR::FindIfCarIDSentBefore(unsigned long carID)
+{
+	return Tool_FuncfindIfSendBefore(m_lsSentCarIDList, carID);
+}
+
+void Camera6467_VFR::AddCarIDToSentList(unsigned long carID)
+{
+	Tool_AddCarIDToTheList(m_lsSentCarIDList, carID);
+}
+
 int Camera6467_VFR::RecordInfoBegin(DWORD dwCarID)
 {
     try
     {
         WriteFormatLog("RecordInfoBegin, dwCarID = %lu", dwCarID);
+
+		if (FindIfCarIDSentBefore(dwCarID))
+		{
+			VFR_WRITE_LOG("this car ID %lu is sent before, do not use it.", dwCarID);
+			return 0;
+		}
+
         SetLastResultIfReceiveComplete(false);
 
         SAFE_DELETE_OBJ(m_pResult);
@@ -1237,7 +1256,14 @@ int Camera6467_VFR::RecordInfoEnd(DWORD dwCarID)
 {
     try
     {
-        WriteFormatLog("RecordInfoEnd, dwCarID = %lu", dwCarID);
+		VFR_WRITE_LOG("dwCarID = %lu", dwCarID);
+
+		if (FindIfCarIDSentBefore(dwCarID))
+		{
+			VFR_WRITE_LOG("this car ID %lu is sent before, do not use it.", dwCarID);
+			return 0;
+		}
+
         CHECK_ARG(m_pResult);
 
         EnterCriticalSection(&m_csResult);
@@ -1365,12 +1391,19 @@ int Camera6467_VFR::RecordInfoPlate(DWORD dwCarID,
 {
     try
     {
-        WriteFormatLog("RecordInfoPlate, dwCarID = %lu, plateNo = %s, dwRecordType= %x, dw64TimeMS= %I64u",
+		VFR_WRITE_LOG("dwCarID = %lu, plateNo = %s, dwRecordType= %x, dw64TimeMS= %I64u",
             dwCarID,
             pcPlateNo,
             dwRecordType,
             dw64TimeMS);
         BaseCamera::WriteLog(pcAppendInfo);
+
+		if (FindIfCarIDSentBefore(dwCarID))
+		{
+			VFR_WRITE_LOG("this car ID %lu is sent before, do not use it.", dwCarID);
+			return 0;
+		}
+
         CHECK_ARG(m_pResult);
 
         SetLastResultIfReceiveComplete(false);
@@ -1456,7 +1489,7 @@ int Camera6467_VFR::RecordInfoBigImage(DWORD dwCarID,
     DWORD dwRecordType, 
     DWORD64 dw64TimeMS)
 {
-    WriteFormatLog("RecordInfoBigImage, dwCarID = %lu, wImgType = %u, wWidth= %u, wHeight= %u, \
+	VFR_WRITE_LOG("dwCarID = %lu, wImgType = %u, wWidth= %u, wHeight= %u, \
         dwImgDataLen= %lu, dwRecordType = %x, dw64TimeMS = %I64u.",
         dwCarID,
         wImgType,
@@ -1465,6 +1498,12 @@ int Camera6467_VFR::RecordInfoBigImage(DWORD dwCarID,
         dwImgDataLen,
         dwRecordType,
         dw64TimeMS);
+
+	if (FindIfCarIDSentBefore(dwCarID))
+	{
+		VFR_WRITE_LOG("this car ID %lu is sent before, do not use it.", dwCarID);
+		return 0;
+	}
 
     CHECK_ARG(m_pResult);    
     SetLastResultIfReceiveComplete(false);
@@ -1667,7 +1706,7 @@ int Camera6467_VFR::RecordInfoSmallImage(DWORD dwCarID,
     DWORD dwRecordType,
     DWORD64 dw64TimeMS)
 {
-    WriteFormatLog("RecordInfoSmallImage, dwCarID = %lu, wWidth= %u, wHeight= %u, \
+	VFR_WRITE_LOG("dwCarID = %lu, wWidth= %u, wHeight= %u, \
                                                                                     dwImgDataLen= %lu, dwRecordType = %x, dw64TimeMS = %I64u.",
                                                                                     dwCarID,
                                                                                     wWidth,
@@ -1675,6 +1714,12 @@ int Camera6467_VFR::RecordInfoSmallImage(DWORD dwCarID,
                                                                                     dwImgDataLen,
                                                                                     dwRecordType,
                                                                                     dw64TimeMS);
+
+	if (FindIfCarIDSentBefore(dwCarID))
+	{
+		VFR_WRITE_LOG("this car ID %lu is sent before, do not use it.", dwCarID);
+		return 0;
+	}
 
     CHECK_ARG(m_pResult);
     SetLastResultIfReceiveComplete(false);
@@ -1774,7 +1819,7 @@ int Camera6467_VFR::RecordInfoBinaryImage(DWORD dwCarID,
     DWORD dwRecordType, 
     DWORD64 dw64TimeMS)
 {
-    WriteFormatLog("RecordInfoBinaryImage, dwCarID = %lu, wWidth= %u, wHeight= %u, \
+	VFR_WRITE_LOG(" dwCarID = %lu, wWidth= %u, wHeight= %u, \
                                                                                     dwImgDataLen= %lu, dwRecordType = %x, dw64TimeMS = %I64u.",
                                                                                     dwCarID,
                                                                                     wWidth,
@@ -1782,6 +1827,13 @@ int Camera6467_VFR::RecordInfoBinaryImage(DWORD dwCarID,
                                                                                     dwImgDataLen,
                                                                                     dwRecordType,
                                                                                     dw64TimeMS);
+
+	if (FindIfCarIDSentBefore(dwCarID))
+	{
+		VFR_WRITE_LOG("this car ID %lu is sent before, do not use it.", dwCarID);
+		return 0;
+	}
+
     CHECK_ARG(m_pResult);
     SetLastResultIfReceiveComplete(false);
     if (dwCarID == m_pResult->dwCarID)

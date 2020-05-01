@@ -2284,6 +2284,28 @@ void Tool_MakeFileDir(const char* filePath)
 }
 
 
+bool Tool_FuncfindIfSendBefore(std::list<unsigned long>& carIDList, unsigned long carID)
+{
+	if (carIDList.size() <= 0)
+	{
+		return false;
+	}
+	if (std::end(carIDList) == std::find(std::begin(carIDList), std::end(carIDList), carID))
+	{
+		return false;
+	}
+	return true;
+}
+
+void Tool_AddCarIDToTheList(std::list<unsigned long>& carIDList, unsigned long carID)
+{
+	if (carIDList.size() > 5)
+	{
+		carIDList.pop_front();
+	}
+	carIDList.push_back(carID);
+}
+
 #ifdef WIN32
 int Tool_pingIp_win(const char* ipAddress)
 {
