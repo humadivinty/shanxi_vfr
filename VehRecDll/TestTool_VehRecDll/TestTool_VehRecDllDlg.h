@@ -54,4 +54,5 @@ public:
     afx_msg void OnBnClickedButtonGetcardata();
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnBnClickedButtonBegintimer();
+	afx_msg void OnBnClickedButtonOneclickgetdata();
 };

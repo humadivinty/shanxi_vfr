@@ -86,6 +86,7 @@ BEGIN_MESSAGE_MAP(CTestTool_VehRecDllDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BUTTON_GetCarData, &CTestTool_VehRecDllDlg::OnBnClickedButtonGetcardata)
 	ON_WM_TIMER()
 	ON_BN_CLICKED(IDC_BUTTON_BeginTimer, &CTestTool_VehRecDllDlg::OnBnClickedButtonBegintimer)
+	ON_BN_CLICKED(IDC_BUTTON_ONECLickGetData, &CTestTool_VehRecDllDlg::OnBnClickedButtonOneclickgetdata)
 END_MESSAGE_MAP()
 
 
@@ -496,23 +497,10 @@ void CTestTool_VehRecDllDlg::OnBnClickedButtonGetcardata()
 void CTestTool_VehRecDllDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
-	char chLog[256] = { 0 };
-	int iSignal = 1;
-	int iRet = 0;
 	switch (nIDEvent)
 	{
 	case 1:
-		iSignal = 1;
-		iRet = VehRec_VEHSignle(m_iCameraHandle, iSignal);
-		sprintf_s(chLog, sizeof(chLog), " %d = VehRec_VEHSignle(%d,%d)", iRet, m_iCameraHandle, iSignal);
-		ShowMessage(chLog);
-
-		iSignal = 2;
-		iRet = VehRec_VEHSignle(m_iCameraHandle, iSignal);
-		sprintf_s(chLog, sizeof(chLog), " %d = VehRec_VEHSignle(%d,%d)", iRet, m_iCameraHandle, iSignal);
-		ShowMessage(chLog);
-
-		OnBnClickedButtonGetcardata();
+		OnBnClickedButtonOneclickgetdata();
 		break;
 	default:
 		break;
@@ -537,4 +525,27 @@ void CTestTool_VehRecDllDlg::OnBnClickedButtonBegintimer()
 		KillTimer(1);
 		GetDlgItem(IDC_BUTTON_BeginTimer)->SetWindowTextA("开启定时取结果");
 	}	
+}
+
+
+void CTestTool_VehRecDllDlg::OnBnClickedButtonOneclickgetdata()
+{
+	// TODO:  在此添加控件通知处理程序代码
+	char chLog[256] = { 0 };
+	int iSignal = 1;
+	int iRet = VehRec_VEHSignle(m_iCameraHandle, iSignal);
+	sprintf_s(chLog, sizeof(chLog), " %d = VehRec_VEHSignle(%d,%d)", iRet, m_iCameraHandle, iSignal);
+	ShowMessage(chLog);
+
+	iSignal = 2;
+	iRet = VehRec_VEHSignle(m_iCameraHandle, iSignal);
+	sprintf_s(chLog, sizeof(chLog), " %d = VehRec_VEHSignle(%d,%d)", iRet, m_iCameraHandle, iSignal);
+	ShowMessage(chLog);
+
+	iSignal = 2;
+	iRet = VehRec_VEHSignle(m_iCameraHandle, iSignal);
+	sprintf_s(chLog, sizeof(chLog), " %d = VehRec_VEHSignle(%d,%d)", iRet, m_iCameraHandle, iSignal);
+	ShowMessage(chLog);
+
+	OnBnClickedButtonGetcardata();
 }

@@ -354,12 +354,12 @@ VEHRECDLL_API int WINAPI VehRec_GetCarData(int handle, char *colpic, char *plate
 					pSideImageData = pTempResult->CIMG_BestCapture.pbImgData;
 					iSideImageSize = pTempResult->CIMG_BestCapture.dwImgSize;
 				}
-				if (pTempResult->CIMG_LastCapture.dwImgSize > 0)
-				{
-					pTailImagePath = pTempResult->CIMG_LastCapture.chSavePath;
-					pTailImageData = pTempResult->CIMG_LastCapture.pbImgData;
-					iTailImageSize = pTempResult->CIMG_LastCapture.dwImgSize;
-				}
+				//if (pTempResult->CIMG_LastCapture.dwImgSize > 0)
+				//{
+				//	pTailImagePath = pTempResult->CIMG_LastCapture.chSavePath;
+				//	pTailImageData = pTempResult->CIMG_LastCapture.pbImgData;
+				//	iTailImageSize = pTempResult->CIMG_LastCapture.dwImgSize;
+				//}
 				if (strlen(pTempResult->chSaveFileName) > 0)
 				{
 					pVideoPath = pTempResult->chSaveFileName;
