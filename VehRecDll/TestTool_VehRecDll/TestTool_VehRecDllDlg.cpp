@@ -531,7 +531,7 @@ void CTestTool_VehRecDllDlg::OnBnClickedButtonBegintimer()
 void CTestTool_VehRecDllDlg::OnBnClickedButtonOneclickgetdata()
 {
 	// TODO:  在此添加控件通知处理程序代码
-	char chLog[256] = { 0 };
+	char chLog[1024] = { 0 };
 	int iSignal = 1;
 	int iRet = VehRec_VEHSignle(m_iCameraHandle, iSignal);
 	sprintf_s(chLog, sizeof(chLog), " %d = VehRec_VEHSignle(%d,%d)", iRet, m_iCameraHandle, iSignal);
@@ -542,10 +542,53 @@ void CTestTool_VehRecDllDlg::OnBnClickedButtonOneclickgetdata()
 	sprintf_s(chLog, sizeof(chLog), " %d = VehRec_VEHSignle(%d,%d)", iRet, m_iCameraHandle, iSignal);
 	ShowMessage(chLog);
 
-	iSignal = 2;
-	iRet = VehRec_VEHSignle(m_iCameraHandle, iSignal);
-	sprintf_s(chLog, sizeof(chLog), " %d = VehRec_VEHSignle(%d,%d)", iRet, m_iCameraHandle, iSignal);
-	ShowMessage(chLog);
+	char chSideImagePath[256] = { 0 };
+	char chTailImagePath[256] = { 0 };
+	char chVideoPath[256] = { 0 };
 
-	OnBnClickedButtonGetcardata();
+	SYSTEMTIME systime;
+	GetLocalTime(&systime);//本地时间
+	char chTimeNow[64] = { 0 };
+	sprintf_s(chTimeNow, sizeof(chTimeNow), "%04u%02u%02u%02u%02u%02u%03u",
+		systime.wYear,
+		systime.wMonth,
+		systime.wDay,
+		systime.wHour,
+		systime.wMinute,
+		systime.wSecond,
+		systime.wMilliseconds);
+
+	CHAR szPath[256] = { 0 };
+	//getcwd(szPath,sizeof(szPath));
+	memset(szPath, '\0', sizeof(szPath));
+	_getcwd(szPath, sizeof(szPath));
+
+	sprintf_s(chSideImagePath, sizeof(chSideImagePath), "%s\\Result\\%04u%02u%02u\\%s_side.jpg",
+		szPath,
+		systime.wYear,
+		systime.wMonth,
+		systime.wDay,
+		chTimeNow);
+	sprintf_s(chTailImagePath, sizeof(chTailImagePath), "%s\\Result\\%04u%02u%02u\\%s_tail.jpg",
+		szPath,
+		systime.wYear,
+		systime.wMonth,
+		systime.wDay,
+		chTimeNow);
+	sprintf_s(chVideoPath, sizeof(chVideoPath), "%s\\Result\\%04u%02u%02u\\%s_car.mp4",
+		szPath,
+		systime.wYear,
+		systime.wMonth,
+		systime.wDay,
+		chTimeNow);
+
+	iRet = VehRec_GetCarData(m_iCameraHandle, chSideImagePath, chTailImagePath, chVideoPath);
+
+	sprintf_s(chLog, sizeof(chLog), " %d = VehRec_GetCarData(%d) , colpic = %s, platepic = %s, recfile = %s",
+		iRet,
+		m_iCameraHandle,
+		chSideImagePath,
+		chTailImagePath,
+		chVideoPath);
+	ShowMessage(chLog);
 }
